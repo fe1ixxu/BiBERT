@@ -373,13 +373,13 @@ class TransformerEncoder(FairseqEncoder):
     ):
         # embed tokens and positions
         if token_embedding is None:
-            # with torch.no_grad():
-            # device = src_tokens.device
-            # token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
-            # token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
-            # token_attention = torch.where(src_tokens==0, token_ids, token_attention)
-            token_embedding = self.embed_tokens(src_tokens)  # original embedding
-            # token_embedding = self.pretrained_model(src_tokens)[0]
+            with torch.no_grad():
+                device = src_tokens.device
+                token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
+                token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
+                token_attention = torch.where(src_tokens==0, token_ids, token_attention)
+                # token_embedding = self.embed_tokens(src_tokens)  # original embedding
+                token_embedding = self.pretrained_model(src_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
 
         x = embed = self.embed_scale * token_embedding
         if self.embed_positions is not None:
@@ -571,6 +571,8 @@ class TransformerDecoder(FairseqIncrementalDecoder):
         self.padding_idx = embed_tokens.padding_idx
         self.max_target_positions = args.max_target_positions
 
+        self.pretrained_model = AutoModel.from_pretrained("lanwuwei/GigaBERT-v4-Arabic-and-English")
+        self.pretrained_model.eval()
         self.embed_tokens = embed_tokens
 
         self.embed_scale = 1.0 if args.no_scale_embedding else math.sqrt(embed_dim)
@@ -774,7 +776,15 @@ class TransformerDecoder(FairseqIncrementalDecoder):
                 positions = positions[:, -1:]
 
         # embed tokens and positions
-        x = self.embed_scale * self.embed_tokens(prev_output_tokens)
+        with torch.no_grad():
+            device = prev_output_tokens.device
+            token_ids = torch.zeros(prev_output_tokens.shape, dtype=torch.long, device=device)
+            token_attention = torch.ones(prev_output_tokens.shape, dtype=torch.long, device=device)
+            token_attention = torch.where(prev_output_tokens==0, token_ids, token_attention)
+            # token_embedding = self.embed_tokens(src_tokens)  # original embedding
+            token_embedding = self.pretrained_model(prev_output_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
+            print(prev_output_tokens, prev_output_tokens.shape)
+        x = self.embed_scale * token_embedding  ###self.embed_tokens(prev_output_tokens)
 
         if self.quant_noise is not None:
             x = self.quant_noise(x)
