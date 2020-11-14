@@ -48,7 +48,9 @@ class SubwordNMTBPE(object):
             )
 
     def encode(self, x: str) -> str:
+        print("nmt", x)
         return self.bpe.process_line(x)
 
     def decode(self, x: str) -> str:
+        print("nmt", x)
         return (x + " ").replace(self.bpe_symbol, "").rstrip()

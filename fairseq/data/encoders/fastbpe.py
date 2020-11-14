@@ -30,6 +30,7 @@ class fastBPE(object):
             raise ImportError("Please install fastBPE with: pip install fastBPE")
 
     def encode(self, x: str) -> str:
+        print("fastbpe", x)
         return self.bpe.apply([x])[0]
 
     def decode(self, x: str) -> str:

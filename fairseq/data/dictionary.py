@@ -21,20 +21,24 @@ class Dictionary(object):
     def __init__(
         self,
         *,  # begin keyword-only arguments
-        bos="<s>",
-        pad="<pad>",
-        eos="</s>",
-        unk="<unk>",
+        bos="[CLS]", # "<s>",
+        pad="[PAD]", #"<pad>",
+        eos="[SEP]", #"</s>",
+        unk="[UNK]", #"<unk>",
+        mask="[MASK]",
         extra_special_symbols=None,
     ):
-        self.bos_word, self.unk_word, self.pad_word, self.eos_word = bos, unk, pad, eos
+        # self.bos_word, self.unk_word, self.pad_word, self.eos_word = bos, unk, pad, eos
+        self.bos_word, self.unk_word, self.pad_word, self.eos_word, self.mask_word = bos, unk, pad, eos, mask
         self.symbols = []
         self.count = []
         self.indices = {}
-        self.bos_index = self.add_symbol(bos)
         self.pad_index = self.add_symbol(pad)
-        self.eos_index = self.add_symbol(eos)
         self.unk_index = self.add_symbol(unk)
+        self.bos_index = self.add_symbol(bos)
+        self.mask_index = self.add_symbol(mask)
+        self.eos_index = self.add_symbol(eos)
+        
         if extra_special_symbols:
             for s in extra_special_symbols:
                 self.add_symbol(s)
@@ -296,6 +300,7 @@ class Dictionary(object):
         add_if_not_exist=True,
         consumer=None,
         append_eos=True,
+        append_bos = True,
         reverse_order=False,
     ):
         words = line_tokenizer(line)
@@ -314,6 +319,10 @@ class Dictionary(object):
             ids[i] = idx
         if append_eos:
             ids[nwords] = self.eos_index
+        if append_bos:
+            bos = torch.IntTensor([self.bos_index])
+            ids = torch.cat((bos, ids), dim=0)
+
         return ids
 
     @staticmethod

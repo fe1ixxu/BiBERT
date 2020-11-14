@@ -30,6 +30,7 @@ from fairseq.modules import (
 from fairseq.modules.quant_noise import quant_noise as apply_quant_noise_
 from torch import Tensor
 
+from transformers import AutoModel
 
 DEFAULT_MAX_SOURCE_POSITIONS = 1024
 DEFAULT_MAX_TARGET_POSITIONS = 1024
@@ -90,6 +91,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
         super().__init__(encoder, decoder)
         self.args = args
         self.supports_align_args = True
+
 
     @staticmethod
     def add_args(parser):
@@ -321,6 +323,8 @@ class TransformerEncoder(FairseqEncoder):
         self.embed_tokens = embed_tokens
 
         self.embed_scale = 1.0 if args.no_scale_embedding else math.sqrt(embed_dim)
+        self.pretrained_model = AutoModel.from_pretrained("lanwuwei/GigaBERT-v4-Arabic-and-English")
+        self.pretrained_model.eval()
 
         self.embed_positions = (
             PositionalEmbedding(
@@ -369,7 +373,14 @@ class TransformerEncoder(FairseqEncoder):
     ):
         # embed tokens and positions
         if token_embedding is None:
-            token_embedding = self.embed_tokens(src_tokens)
+            # with torch.no_grad():
+            # device = src_tokens.device
+            # token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
+            # token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
+            # token_attention = torch.where(src_tokens==0, token_ids, token_attention)
+            token_embedding = self.embed_tokens(src_tokens)  # original embedding
+            # token_embedding = self.pretrained_model(src_tokens)[0]
+
         x = embed = self.embed_scale * token_embedding
         if self.embed_positions is not None:
             x = embed + self.embed_positions(src_tokens)
