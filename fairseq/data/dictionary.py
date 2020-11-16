@@ -300,7 +300,7 @@ class Dictionary(object):
         add_if_not_exist=True,
         consumer=None,
         append_eos=True,
-        append_bos = True,
+        # append_bos = True,
         reverse_order=False,
     ):
         words = line_tokenizer(line)
@@ -319,9 +319,9 @@ class Dictionary(object):
             ids[i] = idx
         if append_eos:
             ids[nwords] = self.eos_index
-        if append_bos:
-            bos = torch.IntTensor([self.bos_index])
-            ids = torch.cat((bos, ids), dim=0)
+        # if append_bos:
+        #     bos = torch.IntTensor([self.bos_index])
+        #     ids = torch.cat((bos, ids), dim=0)
 
         return ids
 

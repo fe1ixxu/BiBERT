@@ -40,10 +40,8 @@ class TransformerTokenizer(object):
 
     def encode(self, x: str) -> str:
         toks = self.tokenizer.tokenize(x)
-        print("transformers", toks[:,:10])
         return " ".join(toks)
 
     def decode(self, x: str) -> str:
         x = get_sentence(x.split(" "))
-        print(x)
         return " ".join(x)
