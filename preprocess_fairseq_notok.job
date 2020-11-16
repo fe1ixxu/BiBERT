@@ -1,0 +1,24 @@
+#!/bin/bash
+#$ -q gpu.q
+#$ -l mem_free=12G,h_rt=48:00:00,gpu=1
+#$ -M hxu64@jhu.edu
+#$ -m bea
+#$ -cwd
+
+###Code to run
+source ~/.bashrc
+conda activate fairseq
+
+TEXT=data_test #data_transbpe
+FAIRSEQ=/home/haoranxu/fairseq
+
+module load cuda10.1/toolkit
+echo $CUDA_VISIBLE_DEVICES
+
+nvidia-smi
+hostname
+
+fairseq-preprocess --source-lang ar --target-lang en  --trainpref $TEXT/train.32k --validpref $TEXT/dev.32k --testpref $TEXT/test.32k --destdir ${TEXT}/ar-en-notok-32k-data-bin --tokenizer transformer_tokenizer --srcdict vocab.txt --tgtdict vocab.txt
+fairseq-preprocess --source-lang en --target-lang ar  --trainpref $TEXT/train.32k --validpref $TEXT/dev.32k --testpref $TEXT/test.32k --destdir ${TEXT}/en-ar-notok-32k-data-bin --tokenizer transformer_tokenizer --srcdict vocab.txt --tgtdict vocab.txt 
+
+
