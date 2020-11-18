@@ -386,6 +386,7 @@ class TransformerEncoder(FairseqEncoder):
                 token_embedding = token_embedding[:, 1:, :]
                 src_tokens = src_tokens[:, 1:]
 
+
         x = embed = self.embed_scale * token_embedding
         if self.embed_positions is not None:
             x = embed + self.embed_positions(src_tokens)
@@ -792,6 +793,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             # token_embedding = self.embed_tokens(src_tokens)  # original embedding
             token_embedding = Pretrained_model(prev_output_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0][:, :-1, :]
             prev_output_tokens = prev_output_tokens[:, :-1]
+            print(prev_output_tokens[:,:10])
         x = self.embed_scale * token_embedding  ###self.embed_tokens(prev_output_tokens)
 
         if self.quant_noise is not None:
