@@ -294,6 +294,7 @@ class SequenceGenerator(nn.Module):
         for step in range(max_len + 1):  # one extra step for EOS marker
             # reorder decoder internal states based on the prev choice of beams
             # print(f'step: {step}')
+            # print("generate", tokens, max_len+1)
             if reorder_state is not None:
                 if batch_idxs is not None:
                     # update beam indices to take into account removed sentences
@@ -415,7 +416,6 @@ class SequenceGenerator(nn.Module):
                     max_len,
                 )
                 num_remaining_sent -= len(finalized_sents)
-
             assert num_remaining_sent >= 0
             if num_remaining_sent == 0:
                 break
