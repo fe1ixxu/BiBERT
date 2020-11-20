@@ -775,10 +775,10 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             else None
         )
 
-        if incremental_state is not None:
-            prev_output_tokens = prev_output_tokens[:, -1:]
-            if positions is not None:
-                positions = positions[:, -1:]
+        # if incremental_state is not None:
+        #     prev_output_tokens = prev_output_tokens[:, -1:]
+        #     if positions is not None:
+        #         positions = positions[:, -1:]
 
         # embed tokens and positions
         with torch.no_grad():
@@ -790,11 +790,29 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             token_attention = torch.ones(prev_output_tokens.shape, dtype=torch.long, device=device)
             token_attention = torch.where(prev_output_tokens==0, token_ids, token_attention)
             token_ids = torch.ones(prev_output_tokens.shape, dtype=torch.long, device=device)
-            # token_embedding = self.embed_tokens(src_tokens)  # original embedding
-            token_embedding = Pretrained_model(prev_output_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0][:, :-1, :]
-            prev_output_tokens = prev_output_tokens[:, :-1]
-            print(prev_output_tokens[:,:10])
-        x = self.embed_scale * token_embedding  ###self.embed_tokens(prev_output_tokens)
+            if incremental_state is not None:
+                print(prev_output_tokens)
+                token_embedding = Pretrained_model(prev_output_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0][:,-2:-1,:]
+            else:
+                # token_embedding = self.embed_tokens(src_tokens)  # original embedding
+                length = prev_output_tokens.shape[1]
+                token_embedding = torch.zeros(prev_output_tokens.shape[0], prev_output_tokens.shape[1] - 1, 768, device=device)
+                for i in range(1, length):        
+                    token_embedding[:, i-1 ,:] = Pretrained_model(
+                        torch.cat((prev_output_tokens[:, :i], eos), dim=1),
+                        token_type_ids=torch.cat((token_ids[:, :i], token_ids[:, -1].view(-1, 1)), dim=1),
+                        attention_mask=torch.cat((token_attention[:, :i], token_attention[:, -1].view(-1, 1)), dim=1))[0][:, i-1, :]
+            # token_embedding = Pretrained_model(prev_output_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0][:, :-1, :]
+            prev_output_tokens = prev_output_tokens[:,:-1]
+
+
+        if incremental_state is not None:
+            prev_output_tokens = prev_output_tokens[:, -1:]
+            if positions is not None:
+                positions = positions[:, -1:]
+
+
+        x = self.embed_scale * token_embedding # self.embed_tokens(prev_output_tokens)
 
         if self.quant_noise is not None:
             x = self.quant_noise(x)
