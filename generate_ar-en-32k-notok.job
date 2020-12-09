@@ -1,14 +1,14 @@
 source ~/.bashrc
 conda activate fairseq
 
-PATH=data_transbpe/ar-en-notok-32k-data-bin
+STPATH=data_transbpe/en-ar-notok-32k-data-bin
 CUDA_VISIBLE_DEVICES=0,1,2,3 fairseq-generate \
-${PATH}/ar-en-notok-32k-data-bin --path models/transbpe/checkpoint_best.pt \
---remove-bpe --beam 4 --batch-size 64 --lenpen 0.6 --sacrebleu --tokenizer transformer_tokenizer \
---max-len-a 1 --max-len-b 50|tee ${PATH}/generate.out
+${STPATH} --path models/transbpe-enar-encoder/checkpoint_best.pt --tokenizer transformer_tokenizer \
+--remove-bpe --beam 4 --batch-size 16 --lenpen 0.6 --sacrebleu \
+--max-len-a 1 --max-len-b 50|tee ${STPATH}/generate.out
 
-grep ^T ${PATH}/generate.out | cut -f2- | perl -ple 's{(\S)-(\S)}{$1 ##AT##-##AT## $2}g' > ${PATH}/generate.ref
+grep ^T ${STPATH}/generate.out | cut -f2- | perl -ple 's{(\S)-(\S)}{$1 ##AT##-##AT## $2}g' > ${STPATH}/generate.ref
 
-grep ^H ${PATH}/generate.out |cut -f3- | perl -ple 's{(\S)-(\S)}{$1 ##AT##-##AT## $2}g' > ${PATH}/generate.sys
+grep ^H ${STPATH}/generate.out |cut -f3- | perl -ple 's{(\S)-(\S)}{$1 ##AT##-##AT## $2}g' > ${STPATH}/generate.sys
 
-fairseq-score -s ${PATH}/generate.sys -r ${PATH}/generate.ref
+fairseq-score -s ${STPATH}/generate.sys -r ${STPATH}/generate.ref
