@@ -20,29 +20,23 @@ class Dictionary(object):
 
     def __init__(
         self,
+        vocab_file,
         *,  # begin keyword-only arguments
         bos="[CLS]", # "<s>",
         pad="[PAD]", #"<pad>",
         eos="[SEP]", #"</s>",
         unk="[UNK]", #"<unk>",
-        mask="[MASK]",
         extra_special_symbols=None,
     ):
-        # self.bos_word, self.unk_word, self.pad_word, self.eos_word = bos, unk, pad, eos
-        self.bos_word, self.unk_word, self.pad_word, self.eos_word, self.mask_word = bos, unk, pad, eos, mask
+        self.bos_word, self.bos_index, self.eos_word, self.eos_index, self.pad_word, self.pad_index, self.unk_word, self.unk_index = self.define_special_types(vocab_file)
         self.symbols = []
         self.count = []
         self.indices = {}
-        self.pad_index = self.add_symbol(pad)
-        self.unk_index = self.add_symbol(unk)
-        self.bos_index = self.add_symbol(bos)
-        self.mask_index = self.add_symbol(mask)
-        self.eos_index = self.add_symbol(eos)
-        
+
         if extra_special_symbols:
             for s in extra_special_symbols:
                 self.add_symbol(s)
-        self.nspecial = len(self.symbols)
+        self.nspecial = len(self.symbols) # 0
 
     def __eq__(self, other):
         return self.indices == other.indices
@@ -178,6 +172,7 @@ class Dictionary(object):
         self.indices = new_indices
 
         self.pad_to_multiple_(padding_factor)
+        self.nspecial = 4
 
     def pad_to_multiple_(self, padding_factor):
         """Pad Dictionary size to be a multiple of *padding_factor*."""
@@ -205,7 +200,7 @@ class Dictionary(object):
         return self.unk_index
 
     @classmethod
-    def load(cls, f):
+    def load(cls, f, vocab_file):
         """Loads the dictionary from a text file with the format:
 
         ```
@@ -214,7 +209,7 @@ class Dictionary(object):
         ...
         ```
         """
-        d = cls()
+        d = cls(vocab_file)
         d.add_from_file(f)
         return d
 
@@ -238,38 +233,47 @@ class Dictionary(object):
 
         lines = f.readlines()
         indices_start_line = self._load_meta(lines)
-
         for line in lines[indices_start_line:]:
-            try:
-                line, field = line.rstrip().rsplit(" ", 1)
-                if field == "#fairseq:overwrite":
-                    overwrite = True
-                    line, field = line.rsplit(" ", 1)
-                else:
-                    overwrite = False
-                count = int(field)
-                word = line
-                if word in self and not overwrite:
-                    raise RuntimeError(
-                        "Duplicate word found when loading Dictionary: '{}'. "
-                        "Duplicate words can overwrite earlier ones by adding the "
-                        "#fairseq:overwrite flag at the end of the corresponding row "
-                        "in the dictionary file. If using the Camembert model, please "
-                        "download an updated copy of the model file.".format(word)
-                    )
-                self.add_symbol(word, n=count, overwrite=overwrite)
-            except ValueError:
-                raise ValueError(
-                    "Incorrect dictionary format, expected '<token> <cnt> [flags]'"
-                )
+            word = line.strip()
+            count = 1
+            self.indices[word] = len(self.symbols)
+            self.symbols.append(word)
+            self.count.append(count)
+
+        # lines = f.readlines()
+        # indices_start_line = self._load_meta(lines)
+
+        # for line in lines[indices_start_line:]:
+        #     try:
+        #         line, field = line.rstrip().rsplit(" ", 1)
+        #         if field == "#fairseq:overwrite":
+        #             overwrite = True
+        #             line, field = line.rsplit(" ", 1)
+        #         else:
+        #             overwrite = False
+        #         count = int(field)
+        #         word = line
+        #         if word in self and not overwrite:
+        #             raise RuntimeError(
+        #                 "Duplicate word found when loading Dictionary: '{}'. "
+        #                 "Duplicate words can overwrite earlier ones by adding the "
+        #                 "#fairseq:overwrite flag at the end of the corresponding row "
+        #                 "in the dictionary file. If using the Camembert model, please "
+        #                 "download an updated copy of the model file.".format(word)
+        #             )
+        #         self.add_symbol(word, n=count, overwrite=overwrite)
+        #     except ValueError:
+        #         raise ValueError(
+        #             "Incorrect dictionary format, expected '<token> <cnt> [flags]'"
+        #         )
 
     def _save(self, f, kv_iterator):
         if isinstance(f, str):
             PathManager.mkdirs(os.path.dirname(f))
             with PathManager.open(f, "w", encoding="utf-8") as fd:
                 return self.save(fd)
-        for k, v in kv_iterator:
-            print("{} {}".format(k, v), file=f)
+        for k in kv_iterator:
+            print("{}".format(k), file=f)
 
     def _get_meta(self):
         return [], []
@@ -279,14 +283,13 @@ class Dictionary(object):
 
     def save(self, f):
         """Stores dictionary into a text file"""
+        self.nspecial = 0
         ex_keys, ex_vals = self._get_meta()
         self._save(
             f,
-            zip(
-                ex_keys + self.symbols[self.nspecial :],
-                ex_vals + self.count[self.nspecial :],
-            ),
+            ex_keys + self.symbols[self.nspecial :]
         )
+        self.nspecial = 4
 
     def dummy_sentence(self, length):
         t = torch.Tensor(length).uniform_(self.nspecial + 1, len(self)).long()
@@ -300,7 +303,6 @@ class Dictionary(object):
         add_if_not_exist=True,
         consumer=None,
         append_eos=True,
-        # append_bos = True,
         reverse_order=False,
     ):
         words = line_tokenizer(line)
@@ -319,12 +321,31 @@ class Dictionary(object):
             ids[i] = idx
         if append_eos:
             ids[nwords] = self.eos_index
-        # if append_bos:
-        #     bos = torch.IntTensor([self.bos_index])
-        #     ids = torch.cat((bos, ids), dim=0)
 
         return ids
 
+    def define_special_types(self, vocab_file):
+        with open(vocab_file, encoding="utf-8") as f:
+            word = f.readline()
+            ind = 0
+            bos = eos = unk = pad = None
+            while word:
+                word = word.strip()
+                if word in ["[CLS]", "<s>"]:
+                    bos = word
+                    bos_ind = ind
+                elif word in ["[SEP]", "</s>"]:
+                    eos = word
+                    eos_ind = ind
+                elif word in ["[PAD]", "<pad>"]:
+                    pad = word
+                    pad_ind = ind
+                elif word in ["[UNK]", "<unk>"]:
+                    unk = word
+                    unk_ind = ind
+                word = f.readline()
+                ind += 1
+        return bos, bos_ind, eos, eos_ind, pad, pad_ind, unk, unk_ind
     @staticmethod
     def _add_file_to_dictionary_single_worker(
         filename, tokenize, eos_word, worker_id=0, num_workers=1

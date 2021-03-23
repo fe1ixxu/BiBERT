@@ -30,6 +30,8 @@ def get_parser():
                         help='score with sacrebleu')
     parser.add_argument('--sentence-bleu', action='store_true',
                         help='report sentence-level BLEUs (i.e., with +1 smoothing)')
+    parser.add_argument("--vocab_file", default=None, type=str,
+                       help="Vocab file feeded to dictionary")
     # fmt: on
     return parser
 
@@ -44,7 +46,7 @@ def cli_main():
     ), "System output file {} does not exist".format(args.sys)
     assert os.path.exists(args.ref), "Reference file {} does not exist".format(args.ref)
 
-    dict = dictionary.Dictionary()
+    dict = dictionary.Dictionary(args.vocab_file)
 
     def readlines(fd):
         for line in fd.readlines():

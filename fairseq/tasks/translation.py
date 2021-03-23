@@ -263,11 +263,13 @@ class TranslationTask(LegacyFairseqTask):
             )
 
         # load dictionaries
+        src_dict_path = os.path.join(paths[0], "dict.{}.txt".format(args.source_lang))
+        tgt_dict_path = os.path.join(paths[0], "dict.{}.txt".format(args.target_lang))
         src_dict = cls.load_dictionary(
-            os.path.join(paths[0], "dict.{}.txt".format(args.source_lang))
+            src_dict_path, str(src_dict_path)
         )
         tgt_dict = cls.load_dictionary(
-            os.path.join(paths[0], "dict.{}.txt".format(args.target_lang))
+            tgt_dict_path, str(tgt_dict_path)
         )
         assert src_dict.pad() == tgt_dict.pad()
         assert src_dict.eos() == tgt_dict.eos()

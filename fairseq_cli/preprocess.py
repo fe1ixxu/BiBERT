@@ -58,10 +58,11 @@ def main(args):
     def dict_path(lang):
         return dest_path("dict", lang) + ".txt"
 
-    def build_dictionary(filenames, src=False, tgt=False):
+    def build_dictionary(filenames, args=args, src=False, tgt=False):
         assert src ^ tgt
         return task.build_dictionary(
             filenames,
+            args=args,
             workers=args.workers,
             threshold=args.thresholdsrc if src else args.thresholdtgt,
             nwords=args.nwordssrc if src else args.nwordstgt,
@@ -81,9 +82,9 @@ def main(args):
         ), "cannot use both --srcdict and --tgtdict with --joined-dictionary"
 
         if args.srcdict:
-            src_dict = task.load_dictionary(args.srcdict)
+            src_dict = task.load_dictionary(args.srcdict, args.vocab_file)
         elif args.tgtdict:
-            src_dict = task.load_dictionary(args.tgtdict)
+            src_dict = task.load_dictionary(args.tgtdict, args.vocab_file)
         else:
             assert (
                 args.trainpref
@@ -95,7 +96,7 @@ def main(args):
         tgt_dict = src_dict
     else:
         if args.srcdict:
-            src_dict = task.load_dictionary(args.srcdict)
+            src_dict = task.load_dictionary(args.srcdict, args.vocab_file)
         else:
             assert (
                 args.trainpref
@@ -104,7 +105,7 @@ def main(args):
 
         if target:
             if args.tgtdict:
-                tgt_dict = task.load_dictionary(args.tgtdict)
+                tgt_dict = task.load_dictionary(args.tgtdict, args.vocab_file)
             else:
                 assert (
                     args.trainpref

@@ -13,8 +13,8 @@ from fairseq.dataclass import FairseqDataclass
 @dataclass
 class BertBPEConfig(FairseqDataclass):
     bpe_cased: bool = field(default=False, metadata={"help": "set for cased BPE"})
-    bpe_vocab_file: Optional[str] = field(
-        default=None, metadata={"help": "bpe vocab file"}
+    pretrained_bpe: Optional[str] = field(
+        default=None, metadata={"help": "pre-trained bpe model"}
     )
 
 
@@ -22,21 +22,19 @@ class BertBPEConfig(FairseqDataclass):
 class BertBPE(object):
     def __init__(self, cfg):
         try:
-            from transformers import BertTokenizer
+            from transformers import AutoTokenizer
         except ImportError:
             raise ImportError(
                 "Please install transformers with: pip install transformers"
             )
-
-        if cfg.bpe_vocab_file:
-            self.bert_tokenizer = BertTokenizer(
-                cfg.bpe_vocab_file, do_lower_case=not cfg.bpe_cased
-            )
+        print(cfg)
+        if cfg.pretrained_bpe:
+            self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
         else:
             vocab_file_name = (
                 "bert-base-cased" if cfg.bpe_cased else "bert-base-uncased"
             )
-            self.bert_tokenizer = BertTokenizer.from_pretrained(vocab_file_name)
+            self.bert_tokenizer = AutoTokenizer.from_pretrained(vocab_file_name)
 
     def encode(self, x: str) -> str:
         return " ".join(self.bert_tokenizer.tokenize(x))

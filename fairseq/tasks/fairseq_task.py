@@ -46,17 +46,17 @@ class FairseqTask(object):
         self.dataset_to_epoch_iter = {}
 
     @classmethod
-    def load_dictionary(cls, filename):
+    def load_dictionary(cls, filename, vocab_file):
         """Load the dictionary from the filename
 
         Args:
             filename (str): the filename
         """
-        return Dictionary.load(filename)
+        return Dictionary.load(filename, vocab_file)
 
     @classmethod
     def build_dictionary(
-        cls, filenames, workers=1, threshold=-1, nwords=-1, padding_factor=8
+        cls, filenames, args, workers=1, threshold=-1, nwords=-1, padding_factor=8
     ):
         """Build the dictionary
 
@@ -70,7 +70,7 @@ class FairseqTask(object):
                 multiple of 8, which is important on some hardware (e.g., Nvidia
                 Tensor Cores).
         """
-        d = Dictionary()
+        d = Dictionary(args=args)
         for filename in filenames:
             Dictionary.add_file_to_dictionary(
                 filename, d, tokenizer.tokenize_line, workers

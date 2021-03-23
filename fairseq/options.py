@@ -283,6 +283,14 @@ def add_preprocess_args(parser):
                        help="Pad dictionary size to be multiple of N")
     group.add_argument("--workers", metavar="N", default=1, type=int,
                        help="number of parallel workers")
+    group.add_argument("--vocab_file", metavar="N", default=None, type=str,
+                       help="Vocab file feeded to dictionary")
+    group.add_argument("--bpe_merges", metavar="N", default=None, type=str,
+                       help="HF Byte BPE merge.txt")
+    group.add_argument("--bpe_vocab", metavar="N", default=None, type=str,
+                       help="HF Byte BPE vocab.json")
+
+    
     # fmt: on
     return parser
 
@@ -332,6 +340,10 @@ def add_eval_lm_args(parser):
 
 def add_generation_args(parser):
     group = parser.add_argument_group("Generation")
+    group.add_argument("--vocab_file", metavar="N", default=None, type=str,
+                    help="Vocab file feeded to dictionary")
+    group.add_argument("--pretrained_bpe", metavar="N", default=None, type=str,
+                help="Name of the path for the pre-trained model")
     add_common_eval_args(group)
     gen_parser_from_dataclass(group, GenerationConfig())
     return group

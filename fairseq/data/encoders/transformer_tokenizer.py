@@ -35,8 +35,8 @@ class TransformerTokenizerConfig(FairseqDataclass):
 
 @register_tokenizer("transformer_tokenizer", dataclass=TransformerTokenizerConfig)
 class TransformerTokenizer(object):
-    def __init__(self, *unused):
-        self.tokenizer = AutoTokenizer.from_pretrained("lanwuwei/GigaBERT-v4-Arabic-and-English")
+    def __init__(self, pretrained_model):
+        self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
 
     def encode(self, x: str) -> str:
         toks = self.tokenizer.tokenize(x)

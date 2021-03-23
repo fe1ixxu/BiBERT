@@ -34,8 +34,6 @@ from transformers import AutoModel
 
 DEFAULT_MAX_SOURCE_POSITIONS = 1024
 DEFAULT_MAX_TARGET_POSITIONS = 1024
-Pretrained_model = AutoModel.from_pretrained("lanwuwei/GigaBERT-v4-Arabic-and-English")
-Pretrained_model.eval()
 
 
 @register_model("transformer")
@@ -177,6 +175,9 @@ class TransformerModel(FairseqEncoderDecoderModel):
         parser.add_argument('--quant-noise-scalar', type=float, metavar='D', default=0,
                             help='scalar quantization noise and scalar quantization at training time')
         # fmt: on
+        # args for pretrained models:
+        parser.add_argument("--pretrained_model", default=None, type=str,
+                    help="Name of the path for the pre-trained model")
 
     @classmethod
     def build_model(cls, args, task):
@@ -365,6 +366,9 @@ class TransformerEncoder(FairseqEncoder):
         else:
             self.layer_norm = None
 
+        self.dictionary = dictionary
+        self.pretrained_model = AutoModel.from_pretrained(args.pretrained_model)
+        self.pretrained_model.eval()
     def build_encoder_layer(self, args):
         return TransformerEncoderLayer(args)
 
@@ -375,16 +379,27 @@ class TransformerEncoder(FairseqEncoder):
         if token_embedding is None:
             with torch.no_grad():
                 device = src_tokens.device
-                Pretrained_model.to(device)
-                bos = 2*torch.ones(src_tokens.shape[0], 1, dtype=torch.long, device=device)
+                self.pretrained_model.to(device)
+                bos = self.dictionary.bos() * torch.ones(src_tokens.shape[0], 1, dtype=torch.long, device=device)
                 src_tokens = torch.cat((bos, src_tokens), dim=1)
+
+                ### Plan 1
                 token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
                 token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
-                token_attention = torch.where(src_tokens==0, token_ids, token_attention)
-                # token_embedding = self.embed_tokens(src_tokens)  # original embedding
-                token_embedding = Pretrained_model(src_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
+                token_attention = torch.where(src_tokens==self.dictionary.pad(), token_ids, token_attention)
+                token_embedding = self.pretrained_model(src_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
+                ### 
+
+                ### Plan 2
+                # token_embedding = self.pretrained_model(src_tokens)[0]
+                ###
+
                 token_embedding = token_embedding[:, 1:, :]
                 src_tokens = src_tokens[:, 1:]
+                
+
+
+            # token_embedding = self.embed_tokens(src_tokens)  # original embedding
 
 
         x = embed = self.embed_scale * token_embedding
