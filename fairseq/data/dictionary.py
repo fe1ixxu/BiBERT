@@ -22,21 +22,35 @@ class Dictionary(object):
         self,
         vocab_file,
         *,  # begin keyword-only arguments
-        bos="[CLS]", # "<s>",
-        pad="[PAD]", #"<pad>",
-        eos="[SEP]", #"</s>",
-        unk="[UNK]", #"<unk>",
+        bos="<s>",
+        pad="<pad>",
+        eos="</s>",
+        unk="<unk>",
         extra_special_symbols=None,
     ):
         self.bos_word, self.bos_index, self.eos_word, self.eos_index, self.pad_word, self.pad_index, self.unk_word, self.unk_index = self.define_special_types(vocab_file)
+        learn_new_dictionary = False if self.bos_word else True
+
+        if learn_new_dictionary:
+            print("WARNING: Learn a new vocab file! (ignore the warning when you want to train a dict for the tgt language)")
+            self.bos_word, self.unk_word, self.pad_word, self.eos_word = bos, unk, pad, eos
+        else:
+            print("Loading an exist vocab file {} to confirm the ids of speical tokens.".format(vocab_file))
+
         self.symbols = []
         self.count = []
         self.indices = {}
 
+        if learn_new_dictionary:
+            self.bos_index = self.add_symbol(bos)
+            self.pad_index = self.add_symbol(pad)
+            self.eos_index = self.add_symbol(eos)
+            self.unk_index = self.add_symbol(unk)
+
         if extra_special_symbols:
             for s in extra_special_symbols:
                 self.add_symbol(s)
-        self.nspecial = len(self.symbols) # 0
+        self.nspecial = 0
 
     def __eq__(self, other):
         return self.indices == other.indices
@@ -325,6 +339,8 @@ class Dictionary(object):
         return ids
 
     def define_special_types(self, vocab_file):
+        if not vocab_file:
+            return None, None, None, None, None, None, None, None
         with open(vocab_file, encoding="utf-8") as f:
             word = f.readline()
             ind = 0

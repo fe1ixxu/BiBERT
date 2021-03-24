@@ -63,6 +63,7 @@ def main(args):
         return task.build_dictionary(
             filenames,
             args=args,
+            tgt=tgt, 
             workers=args.workers,
             threshold=args.thresholdsrc if src else args.thresholdtgt,
             nwords=args.nwordssrc if src else args.nwordstgt,

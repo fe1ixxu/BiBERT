@@ -285,10 +285,14 @@ def add_preprocess_args(parser):
                        help="number of parallel workers")
     group.add_argument("--vocab_file", metavar="N", default=None, type=str,
                        help="Vocab file feeded to dictionary")
+    group.add_argument("--no_vocab_for_tgt", action="store_true",
+                    help="Do not use for the same vocab file for the target side")
     group.add_argument("--bpe_merges", metavar="N", default=None, type=str,
                        help="HF Byte BPE merge.txt")
     group.add_argument("--bpe_vocab", metavar="N", default=None, type=str,
                        help="HF Byte BPE vocab.json")
+    group.add_argument("--sentencepiece_model", metavar="N", default=None, type=str,
+                       help="Sentence BPE model")
 
     
     # fmt: on
@@ -344,6 +348,12 @@ def add_generation_args(parser):
                     help="Vocab file feeded to dictionary")
     group.add_argument("--pretrained_bpe", metavar="N", default=None, type=str,
                 help="Name of the path for the pre-trained model")
+    group.add_argument("--bpe_merges", metavar="N", default=None, type=str,
+                       help="HF Byte BPE merge.txt")
+    group.add_argument("--bpe_vocab", metavar="N", default=None, type=str,
+                       help="HF Byte BPE vocab.json")
+    group.add_argument("--sentencepiece_model", metavar="N", default=None, type=str,
+                       help="Sentence BPE model")
     add_common_eval_args(group)
     gen_parser_from_dataclass(group, GenerationConfig())
     return group

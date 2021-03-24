@@ -56,7 +56,7 @@ class FairseqTask(object):
 
     @classmethod
     def build_dictionary(
-        cls, filenames, args, workers=1, threshold=-1, nwords=-1, padding_factor=8
+        cls, filenames, args, tgt, workers=1, threshold=-1, nwords=-1, padding_factor=8
     ):
         """Build the dictionary
 
@@ -70,7 +70,10 @@ class FairseqTask(object):
                 multiple of 8, which is important on some hardware (e.g., Nvidia
                 Tensor Cores).
         """
-        d = Dictionary(args=args)
+        if tgt and args.no_vocab_for_tgt:
+            d = Dictionary(vocab_file=None)
+        else:
+            d = Dictionary(vocab_file=args.vocab_file)
         for filename in filenames:
             Dictionary.add_file_to_dictionary(
                 filename, d, tokenizer.tokenize_line, workers
