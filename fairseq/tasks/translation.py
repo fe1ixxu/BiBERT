@@ -234,6 +234,8 @@ class TranslationTask(LegacyFairseqTask):
         parser.add_argument('--eval-bleu-print-samples', action='store_true',
                             help='print sample generations during validation')
         # fmt: on
+        parser.add_argument('--warmup_from_nmt', action='store_true')
+        parser.add_argument('--warmup_nmt_file', type=str, default=None)
 
     def __init__(self, args, src_dict, tgt_dict):
         super().__init__(args)

@@ -19,6 +19,7 @@ class RobertaHubInterface(nn.Module):
 
     def __init__(self, cfg, task, model):
         super().__init__()
+        self.args = cfg['task']
         self.cfg = cfg
         self.task = task
         self.model = model

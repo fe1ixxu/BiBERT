@@ -26,7 +26,7 @@ from torch.serialization import default_restore_location
 logger = logging.getLogger(__name__)
 
 
-def save_checkpoint(cfg: DictConfig, trainer, epoch_itr, val_loss):
+def save_checkpoint(cfg: DictConfig, trainer, epoch_itr, val_loss, warmup_from_nmt=False):
     from fairseq import meters
 
     # only one worker should attempt to create the required dir
@@ -137,7 +137,9 @@ def load_checkpoint(cfg: DictConfig, trainer, **passthrough_args):
     *passthrough_args* will be passed through to
     ``trainer.get_train_iterator``.
     """
-
+    warmup_from_nmt = cfg.task.warmup_from_nmt
+    warmup_nmt_file = cfg.task.warmup_nmt_file
+    cfg = cfg.checkpoint
     reset_optimizer = cfg.reset_optimizer
     reset_lr_scheduler = cfg.reset_lr_scheduler
     optimizer_overrides = ast.literal_eval(cfg.optimizer_overrides)
@@ -187,6 +189,10 @@ def load_checkpoint(cfg: DictConfig, trainer, **passthrough_args):
             "--finetune-from-model and --restore-file (non-default value) "
             "can not be specified together: " + str(cfg)
         )
+    
+    if warmup_from_nmt:
+        checkpoint_path = warmup_nmt_file
+        print('Model will load checkpoint from {}'.format(checkpoint_path))
 
     extra_state = trainer.load_checkpoint(
         checkpoint_path,
@@ -194,6 +200,7 @@ def load_checkpoint(cfg: DictConfig, trainer, **passthrough_args):
         reset_lr_scheduler,
         optimizer_overrides,
         reset_meters=reset_meters,
+        warmup_from_nmt=warmup_from_nmt
     )
 
     if (
@@ -296,7 +303,6 @@ def load_model_ensemble_and_task(
 
             if task is None:
                 task = tasks.setup_task(cfg.task)
-
             # build model for ensemble
             model = task.build_model(cfg.model)
 

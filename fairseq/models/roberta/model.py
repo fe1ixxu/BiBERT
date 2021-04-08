@@ -169,7 +169,7 @@ class RobertaModel(FairseqEncoderModel):
 
         # make sure all arguments are present
         base_architecture(args)
-
+        
         if not hasattr(args, "max_positions"):
             args.max_positions = args.tokens_per_sample
 

@@ -107,13 +107,13 @@ class MaskedLMTask(LegacyFairseqTask):
         self.seed = args.seed
 
         # add mask token
-        self.mask_idx = dictionary.add_symbol("<mask>")
+        self.mask_idx = 4
 
     @classmethod
     def setup_task(cls, args, **kwargs):
         paths = utils.split_paths(args.data)
         assert len(paths) > 0
-        dictionary = Dictionary.load(os.path.join(paths[0], "dict.txt"))
+        dictionary = Dictionary.load(os.path.join(paths[0], "dict.txt"), os.path.join(paths[0], "dict.txt"))
         logger.info("dictionary: {} types".format(len(dictionary)))
         return cls(args, dictionary)
 

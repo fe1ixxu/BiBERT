@@ -109,7 +109,7 @@ def main(cfg: DictConfig) -> None:
     # Load the latest checkpoint if one is available and restore the
     # corresponding train iterator
     extra_state, epoch_itr = checkpoint_utils.load_checkpoint(
-        cfg.checkpoint,
+        cfg,
         trainer,
         # don't cache epoch iterators for sharded datasets
         disable_iterator_cache=task.has_sharded_data("train"),

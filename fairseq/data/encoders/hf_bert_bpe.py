@@ -27,7 +27,6 @@ class BertBPE(object):
             raise ImportError(
                 "Please install transformers with: pip install transformers"
             )
-        print(cfg)
         if cfg.pretrained_bpe:
             self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
         else:
@@ -40,9 +39,10 @@ class BertBPE(object):
         return " ".join(self.bert_tokenizer.tokenize(x))
 
     def decode(self, x: str) -> str:
-        return self.bert_tokenizer.clean_up_tokenization(
-            self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
-        )
+        return self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
+        # return self.bert_tokenizer.clean_up_tokenization(
+        #     self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
+        # )
 
     def is_beginning_of_word(self, x: str) -> bool:
         return not x.startswith("##")

@@ -36,6 +36,7 @@ class Dictionary(object):
             self.bos_word, self.unk_word, self.pad_word, self.eos_word = bos, unk, pad, eos
         else:
             print("Loading an exist vocab file {} to confirm the ids of speical tokens.".format(vocab_file))
+            print(self.bos_word, self.bos_index, self.eos_word, self.eos_index, self.pad_word, self.pad_index, self.unk_word, self.unk_index)
 
         self.symbols = []
         self.count = []
