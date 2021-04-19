@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
-from fairseq import utils
+from fairseq import utils, checkpoint_utils
 from fairseq.models import (
     FairseqEncoder,
     FairseqEncoderDecoderModel,
@@ -180,6 +180,8 @@ class TransformerModel(FairseqEncoderDecoderModel):
         # args for pretrained models:
         parser.add_argument("--pretrained_model", default=None, type=str,
                     help="Name of the path for the pre-trained model")
+        parser.add_argument("--use_our_model", default=None, type=str,
+                    help="Path of our bi-lingual model")
 
     @classmethod
     def build_model(cls, args, task):
@@ -326,6 +328,13 @@ class TransformerEncoder(FairseqEncoder):
         self.max_source_positions = args.max_source_positions
 
         self.pretrained_model_name = args.pretrained_model
+
+        try:
+            self.use_our_model = args.use_our_model
+        except Exception:
+            self.use_our_model = None
+
+
         if not self.pretrained_model_name:
             self.embed_tokens = embed_tokens
 
@@ -371,9 +380,15 @@ class TransformerEncoder(FairseqEncoder):
             self.layer_norm = None
 
         self.dictionary = dictionary
-        if self.pretrained_model_name:
+        if self.pretrained_model_name and not self.use_our_model:
             self.pretrained_model = AutoModel.from_pretrained(args.pretrained_model)
             self.pretrained_model.eval()
+        elif self.pretrained_model_name and self.use_our_model:
+            self.pretrained_model = torch.load(self.use_our_model)
+            # state = checkpoint_utils.load_checkpoint_to_cpu(self.use_our_model)
+            # self.pretrained_model.load_state_dict(state["model"], strict=True)
+            self.pretrained_model.eval()
+
     def build_encoder_layer(self, args):
         return TransformerEncoderLayer(args)
 
@@ -390,19 +405,20 @@ class TransformerEncoder(FairseqEncoder):
                     src_tokens = torch.cat((bos, src_tokens), dim=1)
 
                     ### Plan 1
-                    token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
-                    token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
-                    token_attention = torch.where(src_tokens==self.dictionary.pad(), token_ids, token_attention)
-                    token_embedding = self.pretrained_model(src_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
+                    if not self.use_our_model:
+                        token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
+                        token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
+                        token_attention = torch.where(src_tokens==self.dictionary.pad(), token_ids, token_attention)
+                        token_embedding = self.pretrained_model(src_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
                     ### 
 
                     ### Plan 2
-                    # token_embedding = self.pretrained_model(src_tokens)[0]
+                    else:
+                        token_embedding = self.pretrained_model(src_tokens, features_only=True)[0]
                     ###
 
                     token_embedding = token_embedding[:, 1:, :]
                     src_tokens = src_tokens[:, 1:]
-                
 
             else:
                 token_embedding = self.embed_tokens(src_tokens)  # original embedding
@@ -1079,7 +1095,7 @@ class Transformer2Model(FairseqEncoderDecoderModel):
         # args for pretrained models:
         parser.add_argument("--pretrained_model", default=None, type=str,
                     help="Name of the path for the pre-trained model")
-        parser.add_argument("--use_pretrain", action='store_true',
+        parser.add_argument("--use_pretrain", default=None, action='store_true',
                     help="If use pretrained model as embedding layer")
 
     @classmethod
@@ -1200,9 +1216,7 @@ class Transformer2Model(FairseqEncoderDecoderModel):
     ):
         """Get normalized probabilities (or log probs) from a net's output."""
         return self.get_normalized_probs_scriptable(net_output, log_probs, sample)
-
-
-        
+      
 
 class Transformer2Encoder(FairseqEncoder):
     """
@@ -1310,8 +1324,8 @@ class Transformer2Encoder(FairseqEncoder):
             else:
                 token_embedding = bert_embedding
 
-
         x = embed = self.embed_scale * token_embedding
+        # x = embed = self.embed_scale * 0.5 * (token_embedding + bert_embedding)
         if self.embed_positions is not None:
             x = embed + self.embed_positions(src_tokens)
         if self.layernorm_embedding is not None:

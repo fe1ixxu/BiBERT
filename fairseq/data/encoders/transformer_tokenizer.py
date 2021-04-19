@@ -6,6 +6,11 @@ from dataclasses import dataclass, field
 from transformers import AutoTokenizer, AutoModel
 from fairseq.data.encoders import register_tokenizer
 from fairseq.dataclass import FairseqDataclass
+from typing import Optional
+
+from fairseq.data.encoders import register_bpe
+from fairseq.dataclass import FairseqDataclass
+
 
 def get_sentence(tokens):
     sentence = []
@@ -31,12 +36,14 @@ def find_pound_key(tokens, i, index):
 
 @dataclass
 class TransformerTokenizerConfig(FairseqDataclass):
-    pass
+    pretrained_bpe: Optional[str] = field(
+        default=None, metadata={"help": "pre-trained bpe model"}
+    )
 
 @register_tokenizer("transformer_tokenizer", dataclass=TransformerTokenizerConfig)
 class TransformerTokenizer(object):
-    def __init__(self, pretrained_model):
-        self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
+    def __init__(self, cfg):
+        self.tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
 
     def encode(self, x: str) -> str:
         toks = self.tokenizer.tokenize(x)

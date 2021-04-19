@@ -9,6 +9,28 @@ from typing import Optional
 from fairseq.data.encoders import register_bpe
 from fairseq.dataclass import FairseqDataclass
 
+def get_sentence(tokens):
+    sentence = []
+    length = len(tokens)
+    i=0
+    while(i < length):
+        index = [i]
+        index = find_pound_key(tokens, i, index)
+        i = index[-1]+1
+        word = [tokens[j].strip("##") for j in index]
+        word = "".join(word)
+        sentence.append(word)
+    return sentence
+
+def find_pound_key(tokens, i, index):
+    if i == len(tokens)-1:
+        return index
+    if "##" not in tokens[i+1]:
+        return index
+    if "##" in tokens[i+1]:
+        index.append(i+1)
+        return find_pound_key(tokens, i+1, index)
+
 
 @dataclass
 class BertBPEConfig(FairseqDataclass):
@@ -27,8 +49,13 @@ class BertBPE(object):
             raise ImportError(
                 "Please install transformers with: pip install transformers"
             )
+        self.pretrained_bpe = cfg.pretrained_bpe
         if cfg.pretrained_bpe:
             self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
+            if "de" in cfg.pretrained_bpe:
+                self.t = AutoTokenizer.from_pretrained("Geotrend/bert-base-en-de-cased")
+            else:
+                self.t = AutoTokenizer.from_pretrained("Geotrend/bert-base-en-fr-cased")
         else:
             vocab_file_name = (
                 "bert-base-cased" if cfg.bpe_cased else "bert-base-uncased"
@@ -39,7 +66,11 @@ class BertBPE(object):
         return " ".join(self.bert_tokenizer.tokenize(x))
 
     def decode(self, x: str) -> str:
-        return self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
+        if self.pretrained_bpe in ["Geotrend/bert-base-en-de-cased", "Geotrend/bert-base-en-fr-cased", "../models/lang-model/wp_models/"] or "wordpiece" in self.pretrained_bpe:
+            return " ".join(get_sentence(x.split(" ")))
+        else:
+            tokens = self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
+            return " ".join(get_sentence(self.t.tokenize(tokens)))
         # return self.bert_tokenizer.clean_up_tokenization(
         #     self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
         # )
