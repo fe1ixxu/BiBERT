@@ -37,6 +37,14 @@ from transformers import AutoModel
 DEFAULT_MAX_SOURCE_POSITIONS = 1024
 DEFAULT_MAX_TARGET_POSITIONS = 1024
 
+# def get_pretrained_model(model_name, symbol):
+#     if symbol == "ours":
+#         pretrained_model = torch.load(model_name)  
+#     else:
+#         pretrained_model = AutoModel.from_pretrained(args.pretrained_model)
+#     pretrained_model.eval()
+#     return pretrained_model
+PRETRAINED_MODEL = torch.load("/export/c12/haoranxu/fairseq/pretrain/models/lang-model/lang-model608.pt")
 
 @register_model("transformer")
 class TransformerModel(FairseqEncoderDecoderModel):
@@ -328,7 +336,7 @@ class TransformerEncoder(FairseqEncoder):
         self.max_source_positions = args.max_source_positions
 
         self.pretrained_model_name = args.pretrained_model
-
+        
         try:
             self.use_our_model = args.use_our_model
         except Exception:
@@ -384,10 +392,11 @@ class TransformerEncoder(FairseqEncoder):
             self.pretrained_model = AutoModel.from_pretrained(args.pretrained_model)
             self.pretrained_model.eval()
         elif self.pretrained_model_name and self.use_our_model:
-            self.pretrained_model = torch.load(self.use_our_model)
-            # state = checkpoint_utils.load_checkpoint_to_cpu(self.use_our_model)
-            # self.pretrained_model.load_state_dict(state["model"], strict=True)
-            self.pretrained_model.eval()
+            pass
+            # self.pretrained_model = torch.load(self.use_our_model)
+            # # state = checkpoint_utils.load_checkpoint_to_cpu(self.use_our_model)
+            # # self.pretrained_model.load_state_dict(state["model"], strict=True)
+            # self.pretrained_model.eval()
 
     def build_encoder_layer(self, args):
         return TransformerEncoderLayer(args)
@@ -414,7 +423,8 @@ class TransformerEncoder(FairseqEncoder):
 
                     ### Plan 2
                     else:
-                        token_embedding = self.pretrained_model(src_tokens, features_only=True)[0]
+                        # token_embedding = self.pretrained_model(src_tokens, features_only=True)[0]
+                        token_embedding = PRETRAINED_MODEL(src_tokens, features_only=True)[0]
                     ###
 
                     token_embedding = token_embedding[:, 1:, :]
