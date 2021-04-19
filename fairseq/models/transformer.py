@@ -409,7 +409,10 @@ class TransformerEncoder(FairseqEncoder):
             if self.pretrained_model_name:
                 with torch.no_grad():
                     device = src_tokens.device
-                    self.pretrained_model.to(device)
+                    if not self.use_our_model:
+                        self.pretrained_model.to(device)
+                    else:
+                        PRETRAINED_MODEL.to(device)
                     bos = self.dictionary.bos() * torch.ones(src_tokens.shape[0], 1, dtype=torch.long, device=device)
                     src_tokens = torch.cat((bos, src_tokens), dim=1)
 
