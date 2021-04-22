@@ -37,14 +37,11 @@ from transformers import AutoModel
 DEFAULT_MAX_SOURCE_POSITIONS = 1024
 DEFAULT_MAX_TARGET_POSITIONS = 1024
 
-# def get_pretrained_model(model_name, symbol):
-#     if symbol == "ours":
-#         pretrained_model = torch.load(model_name)  
-#     else:
-#         pretrained_model = AutoModel.from_pretrained(args.pretrained_model)
-#     pretrained_model.eval()
-#     return pretrained_model
-PRETRAINED_MODEL = torch.load("/export/c12/haoranxu/fairseq/pretrain/models/lang-model/lang-model608.pt")
+PRETRAINED_MODEL = None
+def get_pretrained_model(model_name):
+    global PRETRAINED_MODEL
+    PRETRAINED_MODEL = torch.load(model_name)
+    PRETRAINED_MODEL.eval()
 
 @register_model("transformer")
 class TransformerModel(FairseqEncoderDecoderModel):
@@ -392,7 +389,7 @@ class TransformerEncoder(FairseqEncoder):
             self.pretrained_model = AutoModel.from_pretrained(args.pretrained_model)
             self.pretrained_model.eval()
         elif self.pretrained_model_name and self.use_our_model:
-            pass
+            get_pretrained_model(self.pretrained_model_name)
             # self.pretrained_model = torch.load(self.use_our_model)
             # # state = checkpoint_utils.load_checkpoint_to_cpu(self.use_our_model)
             # # self.pretrained_model.load_state_dict(state["model"], strict=True)
@@ -1110,6 +1107,10 @@ class Transformer2Model(FairseqEncoderDecoderModel):
                     help="Name of the path for the pre-trained model")
         parser.add_argument("--use_pretrain", default=None, action='store_true',
                     help="If use pretrained model as embedding layer")
+        parser.add_argument("--use_drop_net", default=None, action='store_true',
+                    help="If use pretrained model as embedding layer")
+        parser.add_argument("--use_our_model", default=None, type=str,
+                    help="Path of our bi-lingual model")
 
     @classmethod
     def build_model(cls, args, task):
@@ -1257,6 +1258,12 @@ class Transformer2Encoder(FairseqEncoder):
 
         self.pretrained_model_name = args.pretrained_model
         self.use_pretrain = args.use_pretrain
+
+        try:
+            self.use_our_model = args.use_our_model
+        except Exception:
+            self.use_our_model = None
+
         if not self.use_pretrain:
             self.embed_tokens = embed_tokens
 
@@ -1302,8 +1309,12 @@ class Transformer2Encoder(FairseqEncoder):
             self.layer_norm = None
 
         self.dictionary = dictionary
-        self.pretrained_model = AutoModel.from_pretrained(args.pretrained_model)
-        self.pretrained_model.eval()
+        if self.pretrained_model_name and not self.use_our_model:
+            self.pretrained_model = AutoModel.from_pretrained(args.pretrained_model)
+            self.pretrained_model.eval()
+        elif self.pretrained_model_name and self.use_our_model:
+            get_pretrained_model(self.pretrained_model_name)
+
     def build_encoder_layer(self, args):
         return Transformer2EncoderLayer(args)
 
@@ -1314,19 +1325,23 @@ class Transformer2Encoder(FairseqEncoder):
         if token_embedding is None:
             with torch.no_grad():
                 device = src_tokens.device
-                self.pretrained_model.to(device)
+                if not self.use_our_model:
+                    self.pretrained_model.to(device)
+                else:
+                    PRETRAINED_MODEL.to(device)
                 bos = self.dictionary.bos() * torch.ones(src_tokens.shape[0], 1, dtype=torch.long, device=device)
                 src_tokens = torch.cat((bos, src_tokens), dim=1)
 
                 ### Plan 1
-                token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
-                token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
-                token_attention = torch.where(src_tokens==self.dictionary.pad(), token_ids, token_attention)
-                bert_embedding = self.pretrained_model(src_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
+                if not self.use_our_model:
+                    token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
+                    token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
+                    token_attention = torch.where(src_tokens==self.dictionary.pad(), token_ids, token_attention)
+                    bert_embedding = self.pretrained_model(src_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
                 ### 
-
+                else:
                 ### Plan 2
-                # token_embedding = self.pretrained_model(src_tokens)[0]
+                    bert_embedding = PRETRAINED_MODEL(src_tokens, features_only=True)[0]
                 ###
 
                 bert_embedding = bert_embedding[:, 1:, :]
@@ -1940,6 +1955,18 @@ def base_architecture(args):
 
 
 @register_model_architecture("transformer", "transformer_iwslt_de_en")
+def transformer_iwslt_de_en(args):
+    args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
+    args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 1024)
+    args.encoder_attention_heads = getattr(args, "encoder_attention_heads", 4)
+    args.encoder_layers = getattr(args, "encoder_layers", 6)
+    args.decoder_embed_dim = getattr(args, "decoder_embed_dim", 512)
+    args.decoder_ffn_embed_dim = getattr(args, "decoder_ffn_embed_dim", 1024)
+    args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 4)
+    args.decoder_layers = getattr(args, "decoder_layers", 6)
+    base_architecture(args)
+
+@register_model_architecture("transformer-bert-fuse", "transformer2_iwslt_de_en")
 def transformer_iwslt_de_en(args):
     args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
     args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 1024)

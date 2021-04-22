@@ -438,6 +438,7 @@ class Transformer2EncoderLayer(nn.Module):
         self.self_attn = self.build_self_attention(self.embed_dim, args)
         self.bert_attn = self.build_self_attention(self.embed_dim, args)
         self.self_attn_layer_norm = LayerNorm(self.embed_dim)
+        self.use_drop_net = args.use_drop_net
         self.dropout_module = FairseqDropout(
             args.dropout, module_name=self.__class__.__name__
         )
@@ -569,10 +570,10 @@ class Transformer2EncoderLayer(nn.Module):
         return x
     def get_ratio(self):
         frand = float(uniform(0,1))
-        if frand < 0.5 and self.training:
+        if frand < 0.5 and self.use_drop_net and self.training:
             return [0, 1]
-        elif frand > 0.5 and self.training:
-            return [1,0]
+        elif frand > 0.5 and self.use_drop_net and self.training:
+            return [1, 0]
         else:
             return [0.5, 0.5]
 
@@ -606,7 +607,7 @@ class Transformer2DecoderLayer(nn.Module):
         self.quant_noise_block_size = getattr(args, "quant_noise_pq_block_size", 8)
 
         self.cross_self_attention = getattr(args, "cross_self_attention", False)
-
+        self.use_drop_net = args.use_drop_net
         self.self_attn = self.build_self_attention(
             self.embed_dim,
             args,
@@ -851,9 +852,9 @@ class Transformer2DecoderLayer(nn.Module):
 
     def get_ratio(self):
         frand = float(uniform(0,1))
-        if frand < 0.5 and self.training:
+        if frand < 0.5 and self.use_drop_net and self.training:
             return [0, 1]
-        elif frand > 0.5 and self.training:
+        elif frand > 0.5 and self.use_drop_net and self.training:
             return [1,0]
         else:
             return [0.5, 0.5]
