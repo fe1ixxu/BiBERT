@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, NamedTuple
 
 import torch
 import torch.nn as nn
@@ -42,6 +42,20 @@ def get_pretrained_model(model_name):
     global PRETRAINED_MODEL
     PRETRAINED_MODEL = torch.load(model_name)
     PRETRAINED_MODEL.eval()
+
+EncoderOut2 = NamedTuple(
+    "EncoderOut2",
+    [
+        ("encoder_out", Tensor),  # T x B x C
+        ("encoder_padding_mask", Optional[Tensor]),  # B x T
+        ("encoder_embedding", Optional[Tensor]),  # B x T x C
+        ("bert_embedding", Optional[Tensor]),
+        ("encoder_states", Optional[List[Tensor]]),  # List[T x B x C]
+        ("src_tokens", Optional[Tensor]),  # B x T
+        ("src_lengths", Optional[Tensor]),  # B x 1
+    ],
+)
+
 
 @register_model("transformer")
 class TransformerModel(FairseqEncoderDecoderModel):
@@ -1179,7 +1193,7 @@ class Transformer2Model(FairseqEncoderDecoderModel):
 
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
-        return Transformer2Decoder(
+        return TransformerDecoder(
             args,
             tgt_dict,
             embed_tokens,
@@ -1361,7 +1375,7 @@ class Transformer2Encoder(FairseqEncoder):
         x = self.dropout_module(x)
         if self.quant_noise is not None:
             x = self.quant_noise(x)
-        return (x, embed) if self.use_pretrain else (x, bert_embedding)
+        return (x, embed, embed) if self.use_pretrain else (x, embed, bert_embedding)
 
     def forward(
         self,
@@ -1393,7 +1407,7 @@ class Transformer2Encoder(FairseqEncoder):
                   hidden states of shape `(src_len, batch, embed_dim)`.
                   Only populated if *return_all_hiddens* is True.
         """
-        x, encoder_embedding = self.forward_embedding(src_tokens, token_embeddings)
+        x, encoder_embedding, bert_embedding = self.forward_embedding(src_tokens, token_embeddings)
 
         # B x T x C -> T x B x C
         x = x.transpose(0, 1)
@@ -1405,7 +1419,7 @@ class Transformer2Encoder(FairseqEncoder):
 
         # encoder layers
         for layer in self.layers:
-            x = layer(x, encoder_padding_mask, encoder_embedding)
+            x = layer(x, encoder_padding_mask, bert_embedding)
             if return_all_hiddens:
                 assert encoder_states is not None
                 encoder_states.append(x)
@@ -1413,10 +1427,11 @@ class Transformer2Encoder(FairseqEncoder):
         if self.layer_norm is not None:
             x = self.layer_norm(x)
 
-        return EncoderOut(
+        return EncoderOut2(
             encoder_out=x,  # T x B x C
             encoder_padding_mask=encoder_padding_mask,  # B x T
             encoder_embedding=encoder_embedding,  # B x T x C
+            bert_embedding=bert_embedding,
             encoder_states=encoder_states,  # List[T x B x C]
             src_tokens=None,
             src_lengths=None,
@@ -1441,6 +1456,7 @@ class Transformer2Encoder(FairseqEncoder):
         """
         encoder_padding_mask: Optional[Tensor] = encoder_out.encoder_padding_mask
         encoder_embedding: Optional[Tensor] = encoder_out.encoder_embedding
+        bert_embedding: Optional[Tensor] = encoder_out.bert_embedding
 
         new_encoder_out = (
             encoder_out.encoder_out
@@ -1457,6 +1473,13 @@ class Transformer2Encoder(FairseqEncoder):
             if encoder_embedding is None
             else encoder_embedding.index_select(0, new_order)
         )
+
+        new_bert_embedding = (
+            bert_embedding
+            if bert_embedding is None
+            else bert_embedding.index_select(0, new_order)
+        )
+
         src_tokens = encoder_out.src_tokens
         if src_tokens is not None:
             src_tokens = src_tokens.index_select(0, new_order)
@@ -1470,10 +1493,11 @@ class Transformer2Encoder(FairseqEncoder):
             for idx, state in enumerate(encoder_states):
                 encoder_states[idx] = state.index_select(1, new_order)
 
-        return EncoderOut(
+        return EncoderOut2(
             encoder_out=new_encoder_out,  # T x B x C
             encoder_padding_mask=new_encoder_padding_mask,  # B x T
             encoder_embedding=new_encoder_embedding,  # B x T x C
+            bert_embedding=new_bert_embedding,
             encoder_states=encoder_states,  # List[T x B x C]
             src_tokens=src_tokens,  # B x T
             src_lengths=src_lengths,  # B x 1
@@ -1781,7 +1805,7 @@ class Transformer2Decoder(FairseqIncrementalDecoder):
             x, layer_attn, _ = layer(
                 x,
                 encoder_out.encoder_out if encoder_out is not None else None,
-                encoder_out.encoder_embedding if encoder_out is not None else None,
+                encoder_out.bert_embedding if encoder_out is not None else None,
                 encoder_out.encoder_padding_mask if encoder_out is not None else None,
                 incremental_state,
                 self_attn_mask=self_attn_mask,
@@ -1886,6 +1910,265 @@ class Transformer2Decoder(FairseqIncrementalDecoder):
 
         return state_dict
 
+@register_model("transformer-mix-encoder")
+class Transformer3Model(FairseqEncoderDecoderModel):
+    """
+    Transformer model from `"Attention Is All You Need" (Vaswani, et al, 2017)
+    <https://arxiv.org/abs/1706.03762>`_.
+
+    Args:
+        encoder (TransformerEncoder): the encoder
+        decoder (TransformerDecoder): the decoder
+
+    The Transformer model provides the following named architectures and
+    command-line arguments:
+
+    .. argparse::
+        :ref: fairseq.models.transformer_parser
+        :prog:
+    """
+
+    def __init__(self, args, encoder, decoder, encoder2=None):
+        super().__init__(encoder, decoder)
+        self.args = args
+        self.use_drop_net = args.use_drop_net
+        self.encoder2 = encoder2
+        self.supports_align_args = True
+
+
+    @staticmethod
+    def add_args(parser):
+        """Add model-specific arguments to the parser."""
+        # fmt: off
+        parser.add_argument('--activation-fn',
+                            choices=utils.get_available_activation_fns(),
+                            help='activation function to use')
+        parser.add_argument('--dropout', type=float, metavar='D',
+                            help='dropout probability')
+        parser.add_argument('--attention-dropout', type=float, metavar='D',
+                            help='dropout probability for attention weights')
+        parser.add_argument('--activation-dropout', '--relu-dropout', type=float, metavar='D',
+                            help='dropout probability after activation in FFN.')
+        parser.add_argument('--encoder-embed-path', type=str, metavar='STR',
+                            help='path to pre-trained encoder embedding')
+        parser.add_argument('--encoder-embed-dim', type=int, metavar='N',
+                            help='encoder embedding dimension')
+        parser.add_argument('--encoder-ffn-embed-dim', type=int, metavar='N',
+                            help='encoder embedding dimension for FFN')
+        parser.add_argument('--encoder-layers', type=int, metavar='N',
+                            help='num encoder layers')
+        parser.add_argument('--encoder-attention-heads', type=int, metavar='N',
+                            help='num encoder attention heads')
+        parser.add_argument('--encoder-normalize-before', action='store_true',
+                            help='apply layernorm before each encoder block')
+        parser.add_argument('--encoder-learned-pos', action='store_true',
+                            help='use learned positional embeddings in the encoder')
+        parser.add_argument('--decoder-embed-path', type=str, metavar='STR',
+                            help='path to pre-trained decoder embedding')
+        parser.add_argument('--decoder-embed-dim', type=int, metavar='N',
+                            help='decoder embedding dimension')
+        parser.add_argument('--decoder-ffn-embed-dim', type=int, metavar='N',
+                            help='decoder embedding dimension for FFN')
+        parser.add_argument('--decoder-layers', type=int, metavar='N',
+                            help='num decoder layers')
+        parser.add_argument('--decoder-attention-heads', type=int, metavar='N',
+                            help='num decoder attention heads')
+        parser.add_argument('--decoder-learned-pos', action='store_true',
+                            help='use learned positional embeddings in the decoder')
+        parser.add_argument('--decoder-normalize-before', action='store_true',
+                            help='apply layernorm before each decoder block')
+        parser.add_argument('--decoder-output-dim', type=int, metavar='N',
+                            help='decoder output dimension (extra linear layer '
+                                 'if different from decoder embed dim')
+        parser.add_argument('--share-decoder-input-output-embed', action='store_true',
+                            help='share decoder input and output embeddings')
+        parser.add_argument('--share-all-embeddings', action='store_true',
+                            help='share encoder, decoder and output embeddings'
+                                 ' (requires shared dictionary and embed dim)')
+        parser.add_argument('--no-token-positional-embeddings', default=False, action='store_true',
+                            help='if set, disables positional embeddings (outside self attention)')
+        parser.add_argument('--adaptive-softmax-cutoff', metavar='EXPR',
+                            help='comma separated list of adaptive softmax cutoff points. '
+                                 'Must be used with adaptive_loss criterion'),
+        parser.add_argument('--adaptive-softmax-dropout', type=float, metavar='D',
+                            help='sets adaptive softmax dropout for the tail projections')
+        parser.add_argument('--layernorm-embedding', action='store_true',
+                            help='add layernorm to embedding')
+        parser.add_argument('--no-scale-embedding', action='store_true',
+                            help='if True, dont scale embeddings')
+        # args for "Cross+Self-Attention for Transformer Models" (Peitz et al., 2019)
+        parser.add_argument('--no-cross-attention', default=False, action='store_true',
+                            help='do not perform cross-attention')
+        parser.add_argument('--cross-self-attention', default=False, action='store_true',
+                            help='perform cross+self-attention')
+        # args for "Reducing Transformer Depth on Demand with Structured Dropout" (Fan et al., 2019)
+        parser.add_argument('--encoder-layerdrop', type=float, metavar='D', default=0,
+                            help='LayerDrop probability for encoder')
+        parser.add_argument('--decoder-layerdrop', type=float, metavar='D', default=0,
+                            help='LayerDrop probability for decoder')
+        parser.add_argument('--encoder-layers-to-keep', default=None,
+                            help='which layers to *keep* when pruning as a comma-separated list')
+        parser.add_argument('--decoder-layers-to-keep', default=None,
+                            help='which layers to *keep* when pruning as a comma-separated list')
+        # args for Training with Quantization Noise for Extreme Model Compression ({Fan*, Stock*} et al., 2020)
+        parser.add_argument('--quant-noise-pq', type=float, metavar='D', default=0,
+                            help='iterative PQ quantization noise at training time')
+        parser.add_argument('--quant-noise-pq-block-size', type=int, metavar='D', default=8,
+                            help='block size of quantization noise at training time')
+        parser.add_argument('--quant-noise-scalar', type=float, metavar='D', default=0,
+                            help='scalar quantization noise and scalar quantization at training time')
+        # fmt: on
+        # args for pretrained models:
+        parser.add_argument("--pretrained_model", default=None, type=str,
+                    help="Name of the path for the pre-trained model")
+        parser.add_argument("--use_pretrain", default=None, action='store_true',
+                    help="If use pretrained model as embedding layer")
+        parser.add_argument("--use_drop_net", default=None, action='store_true',
+                    help="If use pretrained model as embedding layer")
+        parser.add_argument("--use_our_model", default=None, type=str,
+                    help="Path of our bi-lingual model")
+
+    @classmethod
+    def build_model(cls, args, task):
+        """Build a new model instance."""
+
+        # make sure all arguments are present in older models
+        base_architecture(args)
+
+        if args.encoder_layers_to_keep:
+            args.encoder_layers = len(args.encoder_layers_to_keep.split(","))
+        if args.decoder_layers_to_keep:
+            args.decoder_layers = len(args.decoder_layers_to_keep.split(","))
+
+        if getattr(args, "max_source_positions", None) is None:
+            args.max_source_positions = DEFAULT_MAX_SOURCE_POSITIONS
+        if getattr(args, "max_target_positions", None) is None:
+            args.max_target_positions = DEFAULT_MAX_TARGET_POSITIONS
+
+        src_dict, tgt_dict = task.source_dictionary, task.target_dictionary
+
+        if args.share_all_embeddings:
+            if src_dict != tgt_dict:
+                raise ValueError("--share-all-embeddings requires a joined dictionary")
+            if args.encoder_embed_dim != args.decoder_embed_dim:
+                raise ValueError(
+                    "--share-all-embeddings requires --encoder-embed-dim to match --decoder-embed-dim"
+                )
+            if args.decoder_embed_path and (
+                args.decoder_embed_path != args.encoder_embed_path
+            ):
+                raise ValueError(
+                    "--share-all-embeddings not compatible with --decoder-embed-path"
+                )
+            encoder_embed_tokens = cls.build_embedding(
+                args, src_dict, args.encoder_embed_dim, args.encoder_embed_path
+            )
+            decoder_embed_tokens = encoder_embed_tokens
+            args.share_decoder_input_output_embed = True
+        else:
+            encoder_embed_tokens = cls.build_embedding(
+                args, src_dict, args.encoder_embed_dim, args.encoder_embed_path
+            )
+            decoder_embed_tokens = cls.build_embedding(
+                args, tgt_dict, args.decoder_embed_dim, args.decoder_embed_path
+            )
+
+        encoder = cls.build_encoder(args, src_dict, encoder_embed_tokens)
+        decoder = cls.build_decoder(args, tgt_dict, decoder_embed_tokens)
+        encoder2 = TransformerEncoder(args, src_dict, encoder_embed_tokens)
+        return cls(args, encoder, decoder, encoder2)
+
+    @classmethod
+    def build_embedding(cls, args, dictionary, embed_dim, path=None):
+        num_embeddings = len(dictionary)
+        padding_idx = dictionary.pad()
+
+        emb = Embedding(num_embeddings, embed_dim, padding_idx)
+        # if provided, load from preloaded dictionaries
+        if path:
+            embed_dict = utils.parse_embedding(path)
+            utils.load_embedding(embed_dict, dictionary, emb)
+        return emb
+
+    @classmethod
+    def build_encoder(cls, args, src_dict, embed_tokens):
+        return TransformerEncoder(args, src_dict, embed_tokens)
+
+    @classmethod
+    def build_decoder(cls, args, tgt_dict, embed_tokens):
+        return TransformerDecoder(
+            args,
+            tgt_dict,
+            embed_tokens,
+            no_encoder_attn=getattr(args, "no_cross_attention", False),
+        )
+
+    # TorchScript doesn't support optional arguments with variable length (**kwargs).
+    # Current workaround is to add union of all arguments in child classes.
+    def forward(
+        self,
+        src_tokens,
+        src_lengths,
+        prev_output_tokens,
+        return_all_hiddens: bool = True,
+        features_only: bool = False,
+        alignment_layer: Optional[int] = None,
+        alignment_heads: Optional[int] = None,
+    ):
+        """
+        Run the forward pass for an encoder-decoder model.
+
+        Copied from the base class, but without ``**kwargs``,
+        which are not supported by TorchScript.
+        """
+        encoder_out = self.encoder(
+            src_tokens, src_lengths=src_lengths, return_all_hiddens=return_all_hiddens
+        )
+        encoder_out2 = self.encoder2(
+            src_tokens, src_lengths=src_lengths, return_all_hiddens=return_all_hiddens
+        )
+        ratio = self.get_ratio()
+        output = EncoderOut(
+                encoder_out=ratio[0] * encoder_out.encoder_out + ratio[1] * encoder_out2.encoder_out,  # T x B x C
+                encoder_padding_mask=encoder_out.encoder_padding_mask,  # B x T
+                encoder_embedding=ratio[0] * encoder_out.encoder_embedding + ratio[1] * encoder_out2.encoder_embedding,  # B x T x C
+                # bert_embedding=encoder_out.bert_embedding,
+                encoder_states=encoder_out.encoder_states,  # List[T x B x C]
+                src_tokens=None,
+                src_lengths=None,
+            )
+        decoder_out = self.decoder(
+            prev_output_tokens,
+            encoder_out=output,
+            features_only=features_only,
+            alignment_layer=alignment_layer,
+            alignment_heads=alignment_heads,
+            src_lengths=src_lengths,
+            return_all_hiddens=return_all_hiddens,
+        )
+        return decoder_out
+
+    def get_ratio(self):
+        if torch.rand(1) < 0.5 and self.training and self.use_drop_net:
+            return  [0, 1]
+        elif torch.rand(1) > 0.5 and self.training and self.use_drop_net:
+            return [1, 0]
+        else:
+            return [0.5, 0.5]
+
+    # Since get_normalized_probs is in the Fairseq Model which is not scriptable,
+    # I rewrite the get_normalized_probs from Base Class to call the
+    # helper function in the Base Class.
+    @torch.jit.export
+    def get_normalized_probs(
+        self,
+        net_output: Tuple[Tensor, Optional[Dict[str, List[Optional[Tensor]]]]],
+        log_probs: bool,
+        sample: Optional[Dict[str, Tensor]] = None,
+    ):
+        """Get normalized probabilities (or log probs) from a net's output."""
+        return self.get_normalized_probs_scriptable(net_output, log_probs, sample)
+
 def Embedding(num_embeddings, embedding_dim, padding_idx):
     m = nn.Embedding(num_embeddings, embedding_dim, padding_idx=padding_idx)
     nn.init.normal_(m.weight, mean=0, std=embedding_dim ** -0.5)
@@ -1967,7 +2250,20 @@ def transformer_iwslt_de_en(args):
     base_architecture(args)
 
 @register_model_architecture("transformer-bert-fuse", "transformer2_iwslt_de_en")
-def transformer_iwslt_de_en(args):
+def transformer2_iwslt_de_en(args):
+    args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
+    args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 1024)
+    args.encoder_attention_heads = getattr(args, "encoder_attention_heads", 4)
+    args.encoder_layers = getattr(args, "encoder_layers", 6)
+    args.decoder_embed_dim = getattr(args, "decoder_embed_dim", 512)
+    args.decoder_ffn_embed_dim = getattr(args, "decoder_ffn_embed_dim", 1024)
+    args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 4)
+    args.decoder_layers = getattr(args, "decoder_layers", 6)
+    base_architecture(args)
+
+
+@register_model_architecture("transformer-mix-encoder", "transformer3_iwslt_de_en")
+def transformer3_iwslt_de_en(args):
     args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
     args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 1024)
     args.encoder_attention_heads = getattr(args, "encoder_attention_heads", 4)
