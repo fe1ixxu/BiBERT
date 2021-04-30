@@ -36,13 +36,15 @@ def find_pound_key(tokens, i, index):
 class BertBPEConfig(FairseqDataclass):
     bpe_cased: bool = field(default=False, metadata={"help": "set for cased BPE"})
     pretrained_bpe: Optional[str] = field(
-        default=None, metadata={"help": "pre-trained bpe model"}
+        default=None, metadata={"help": "pre-trained tgt bpe model"})
+    pretrained_bpe_src: Optional[str] = field(
+        default=None, metadata={"help": "pre-trained src bpe model"}
     )
 
 
 @register_bpe("bert", dataclass=BertBPEConfig)
 class BertBPE(object):
-    def __init__(self, cfg):
+    def __init__(self, cfg, if_src=False):
         try:
             from transformers import AutoTokenizer
         except ImportError:
@@ -51,7 +53,10 @@ class BertBPE(object):
             )
         self.pretrained_bpe = cfg.pretrained_bpe
         if cfg.pretrained_bpe:
-            self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
+            if not if_src:
+                self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
+            else:
+                self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe_src)
             if "de" in cfg.pretrained_bpe:
                 self.t = AutoTokenizer.from_pretrained("Geotrend/bert-base-en-de-cased")
             else:

@@ -172,12 +172,18 @@ def _main(cfg: DictConfig, output_file):
     # Handle tokenization and BPE
     tokenizer = encoders.build_tokenizer(cfg.tokenizer)
     bpe = encoders.build_bpe(cfg.bpe)
+    bpe_src = encoders.build_bpe(cfg.bpe, if_src=True)
 
     def decode_fn(x):
         if bpe is not None:
             x = bpe.decode(x)
         if tokenizer is not None:
             x = tokenizer.decode(x)
+        return x
+
+    def decode_fn_src(x):
+        if bpe is not None:
+            x = bpe_src.decode(x)
         return x
 
     scorer = scoring.build_scorer(cfg.scoring, tgt_dict)
@@ -250,7 +256,7 @@ def _main(cfg: DictConfig, output_file):
                         ),
                     )
 
-            src_str = decode_fn(src_str)
+            src_str = decode_fn_src(src_str)
             if has_target:
                 target_str = decode_fn(target_str)
 

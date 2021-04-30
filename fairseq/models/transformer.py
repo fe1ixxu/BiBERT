@@ -201,6 +201,8 @@ class TransformerModel(FairseqEncoderDecoderModel):
                     help="Name of the path for the pre-trained model")
         parser.add_argument("--use_our_model", default=None, type=str,
                     help="Path of our bi-lingual model")
+        parser.add_argument("--use_drop_embedding", default=1, type=int,
+                    help="Num of dropped embeddings")
 
     @classmethod
     def build_model(cls, args, task):
@@ -353,6 +355,11 @@ class TransformerEncoder(FairseqEncoder):
         except Exception:
             self.use_our_model = None
 
+        try:
+            self.use_drop_embedding = args.use_drop_embedding
+        except Exception:
+            self.use_drop_embedding = 1
+        assert self.use_drop_embedding <= 12
 
         if not self.pretrained_model_name:
             self.embed_tokens = embed_tokens
@@ -438,7 +445,17 @@ class TransformerEncoder(FairseqEncoder):
                     ### Plan 2
                     else:
                         # token_embedding = self.pretrained_model(src_tokens, features_only=True)[0]
-                        token_embedding = PRETRAINED_MODEL(src_tokens, features_only=True)[0]
+                        token_embedding = PRETRAINED_MODEL(src_tokens, features_only=True, return_all_hiddens=True)[1]["inner_states"]
+                        if self.use_drop_embedding == 1:
+                            token_embedding = token_embedding[-1].permute(1,0,2)
+                        else:
+                            if self.training:
+                                random_num = torch.rand(1)
+                                token_embedding = token_embedding[-(int(random_num * self.use_drop_embedding)+1)].permute(1,0,2)
+                            else:
+                                token_embedding = torch.mean(torch.stack(token_embedding[-self.use_drop_embedding:]), dim=0).permute(1,0,2)
+
+                        
                     ###
 
                     token_embedding = token_embedding[:, 1:, :]
@@ -2149,9 +2166,10 @@ class Transformer3Model(FairseqEncoderDecoderModel):
         return decoder_out
 
     def get_ratio(self):
-        if torch.rand(1) < 0.5 and self.training and self.use_drop_net:
+        num = torch.rand(1)
+        if num < 0.5 and self.training and self.use_drop_net:
             return  [0, 1]
-        elif torch.rand(1) > 0.5 and self.training and self.use_drop_net:
+        elif num > 0.5 and self.training and self.use_drop_net:
             return [1, 0]
         else:
             return [0.5, 0.5]

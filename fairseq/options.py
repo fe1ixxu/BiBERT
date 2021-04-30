@@ -348,6 +348,8 @@ def add_generation_args(parser):
                     help="Vocab file feeded to dictionary")
     group.add_argument("--pretrained_bpe", metavar="N", default=None, type=str,
                 help="Name of the path for the pre-trained model")
+    group.add_argument("--pretrained_bpe_src", metavar="N", default=None, type=str,
+                help="Name of the path for the pre-trained model")
     group.add_argument("--bpe_merges", metavar="N", default=None, type=str,
                        help="HF Byte BPE merge.txt")
     group.add_argument("--bpe_vocab", metavar="N", default=None, type=str,
