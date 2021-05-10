@@ -183,7 +183,7 @@ def _main(cfg: DictConfig, output_file):
 
     def decode_fn_src(x):
         if bpe is not None:
-            x = bpe_src.decode(x)
+            x = bpe_src.decode(x, if_src=True)
         return x
 
     scorer = scoring.build_scorer(cfg.scoring, tgt_dict)

@@ -52,15 +52,14 @@ class BertBPE(object):
                 "Please install transformers with: pip install transformers"
             )
         self.pretrained_bpe = cfg.pretrained_bpe
+        self.pretrained_bpe_src = cfg.pretrained_bpe_src
         if cfg.pretrained_bpe:
             if not if_src:
                 self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
             else:
                 self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe_src)
-            if "de" in cfg.pretrained_bpe:
-                self.t = AutoTokenizer.from_pretrained("Geotrend/bert-base-en-de-cased")
-            else:
-                self.t = AutoTokenizer.from_pretrained("Geotrend/bert-base-en-fr-cased")
+
+            self.t = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
         else:
             vocab_file_name = (
                 "bert-base-cased" if cfg.bpe_cased else "bert-base-uncased"
@@ -70,8 +69,9 @@ class BertBPE(object):
     def encode(self, x: str) -> str:
         return " ".join(self.bert_tokenizer.tokenize(x))
 
-    def decode(self, x: str) -> str:
-        if self.pretrained_bpe in ["Geotrend/bert-base-en-de-cased", "Geotrend/bert-base-en-fr-cased", "../models/lang-model/wp_models/"] or "wordpiece" in self.pretrained_bpe:
+    def decode(self, x: str, if_src=False) -> str:
+        pretrained_bpe = self.pretrained_bpe if not if_src else self.pretrained_bpe_src
+        if pretrained_bpe in ["Geotrend/bert-base-en-de-cased", "Geotrend/bert-base-en-fr-cased", "../models/lang-model/wp_models/", "bert-base-multilingual-cased", "lanwuwei/GigaBERT-v4-Arabic-and-English"] or "wordpiece" in self.pretrained_bpe:
             return " ".join(get_sentence(x.split(" ")))
         else:
             tokens = self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
