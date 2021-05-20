@@ -203,6 +203,8 @@ class TransformerModel(FairseqEncoderDecoderModel):
                     help="Path of our bi-lingual model")
         parser.add_argument("--use_drop_embedding", default=1, type=int,
                     help="Num of dropped embeddings")
+        parser.add_argument("--mean", default=None, type=str,
+                    help="if mean of selected layers")
 
     @classmethod
     def build_model(cls, args, task):
@@ -356,6 +358,11 @@ class TransformerEncoder(FairseqEncoder):
             self.use_our_model = None
 
         try:
+            self.mean_layer = args.mean
+        except Exception:
+            self.mean_layer = None
+
+        try:
             self.use_drop_embedding = args.use_drop_embedding
         except Exception:
             self.use_drop_embedding = 1
@@ -449,7 +456,7 @@ class TransformerEncoder(FairseqEncoder):
                         if self.use_drop_embedding == 1:
                             token_embedding = token_embedding[-1].permute(1,0,2)
                         else:
-                            if self.training:
+                            if self.training and not self.mean_layer:
                                 random_num = torch.rand(1)
                                 token_embedding = token_embedding[-(int(random_num * self.use_drop_embedding)+1)].permute(1,0,2)
                             else:
