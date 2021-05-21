@@ -53,32 +53,20 @@ class BertBPE(object):
             )
         self.pretrained_bpe = cfg.pretrained_bpe
         self.pretrained_bpe_src = cfg.pretrained_bpe_src
-        if cfg.pretrained_bpe:
-            if not if_src:
-                self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
-            else:
-                self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe_src)
 
-            self.t = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
+        if not if_src:
+            self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
         else:
-            vocab_file_name = (
-                "bert-base-cased" if cfg.bpe_cased else "bert-base-uncased"
-            )
-            self.bert_tokenizer = AutoTokenizer.from_pretrained(vocab_file_name)
+            self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe_src)
+
 
     def encode(self, x: str) -> str:
         return " ".join(self.bert_tokenizer.tokenize(x))
 
     def decode(self, x: str, if_src=False) -> str:
         pretrained_bpe = self.pretrained_bpe if not if_src else self.pretrained_bpe_src
-        if pretrained_bpe in ["Geotrend/bert-base-en-de-cased", "Geotrend/bert-base-en-fr-cased", "../models/lang-model/wp_models/", "bert-base-multilingual-cased", "lanwuwei/GigaBERT-v4-Arabic-and-English"] or "wordpiece" in self.pretrained_bpe:
-            return " ".join(get_sentence(x.split(" ")))
-        else:
-            tokens = self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
-            return " ".join(get_sentence(self.t.tokenize(tokens)))
-        # return self.bert_tokenizer.clean_up_tokenization(
-        #     self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
-        # )
+        return self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
+
 
     def is_beginning_of_word(self, x: str) -> bool:
         return not x.startswith("##")
