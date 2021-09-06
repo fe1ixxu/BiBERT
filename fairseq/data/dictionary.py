@@ -255,33 +255,6 @@ class Dictionary(object):
             self.symbols.append(word)
             self.count.append(count)
 
-        # lines = f.readlines()
-        # indices_start_line = self._load_meta(lines)
-
-        # for line in lines[indices_start_line:]:
-        #     try:
-        #         line, field = line.rstrip().rsplit(" ", 1)
-        #         if field == "#fairseq:overwrite":
-        #             overwrite = True
-        #             line, field = line.rsplit(" ", 1)
-        #         else:
-        #             overwrite = False
-        #         count = int(field)
-        #         word = line
-        #         if word in self and not overwrite:
-        #             raise RuntimeError(
-        #                 "Duplicate word found when loading Dictionary: '{}'. "
-        #                 "Duplicate words can overwrite earlier ones by adding the "
-        #                 "#fairseq:overwrite flag at the end of the corresponding row "
-        #                 "in the dictionary file. If using the Camembert model, please "
-        #                 "download an updated copy of the model file.".format(word)
-        #             )
-        #         self.add_symbol(word, n=count, overwrite=overwrite)
-        #     except ValueError:
-        #         raise ValueError(
-        #             "Incorrect dictionary format, expected '<token> <cnt> [flags]'"
-        #         )
-
     def _save(self, f, kv_iterator):
         if isinstance(f, str):
             PathManager.mkdirs(os.path.dirname(f))

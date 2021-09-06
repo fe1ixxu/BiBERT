@@ -46,7 +46,7 @@ class BertBPEConfig(FairseqDataclass):
 class BertBPE(object):
     def __init__(self, cfg, if_src=False):
         try:
-            from transformers import AutoTokenizer
+            from transformers import AutoTokenizer, BertTokenizer
         except ImportError:
             raise ImportError(
                 "Please install transformers with: pip install transformers"
@@ -55,18 +55,16 @@ class BertBPE(object):
         self.pretrained_bpe_src = cfg.pretrained_bpe_src
 
         if not if_src:
-            self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
+            self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe)
         else:
-            self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe_src)
+            self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe_src)
 
 
     def encode(self, x: str) -> str:
         return " ".join(self.bert_tokenizer.tokenize(x))
 
     def decode(self, x: str, if_src=False) -> str:
-        pretrained_bpe = self.pretrained_bpe if not if_src else self.pretrained_bpe_src
-        return self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
-
+        return " ".join(get_sentence(x.split(" ")))
 
     def is_beginning_of_word(self, x: str) -> bool:
         return not x.startswith("##")

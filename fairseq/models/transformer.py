@@ -38,12 +38,9 @@ DEFAULT_MAX_SOURCE_POSITIONS = 1024
 DEFAULT_MAX_TARGET_POSITIONS = 1024
 
 PRETRAINED_MODEL = None
-def get_pretrained_model(model_name, use_our_model):
+def get_pretrained_model(model_name):
     global PRETRAINED_MODEL
-    if use_our_model:
-        PRETRAINED_MODEL = torch.load(model_name)
-    else:
-        PRETRAINED_MODEL = AutoModel.from_pretrained(model_name)
+    PRETRAINED_MODEL = AutoModel.from_pretrained(model_name)
     PRETRAINED_MODEL.eval()
 
 @register_model("transformer")
@@ -190,10 +187,6 @@ class TransformerModel(FairseqEncoderDecoderModel):
                     help="Name of the path for the pre-trained model")
         parser.add_argument("--use_drop_embedding", default=1, type=int,
                     help="Num of dropped embeddings")
-        parser.add_argument("--use_our_model", default=False, action='store_true',
-                    help="if use our model")
-        parser.add_argument("--mean", default=False, action='store_true',
-                    help="if mean of selected layers")
 
     @classmethod
     def build_model(cls, args, task):
@@ -340,8 +333,6 @@ class TransformerEncoder(FairseqEncoder):
         self.max_source_positions = args.max_source_positions
 
         self.pretrained_model_name = args.pretrained_model
-        self.use_our_model = args.use_our_model
-        self.mean_layer = args.mean
         self.use_drop_embedding = args.use_drop_embedding
         assert 1 <= self.use_drop_embedding <= 12
 
@@ -392,7 +383,7 @@ class TransformerEncoder(FairseqEncoder):
         self.dictionary = dictionary
 
         if self.pretrained_model_name:
-            get_pretrained_model(self.pretrained_model_name, self.use_our_model)
+            get_pretrained_model(self.pretrained_model_name)
 
     def build_encoder_layer(self, args):
         return TransformerEncoderLayer(args)
@@ -408,27 +399,12 @@ class TransformerEncoder(FairseqEncoder):
                     PRETRAINED_MODEL.to(device)
                     bos = self.dictionary.bos() * torch.ones(src_tokens.shape[0], 1, dtype=torch.long, device=device)
                     src_tokens = torch.cat((bos, src_tokens), dim=1)
-                    ### Plan 1
-                    if not self.use_our_model:
-                        token_ids = torch.zeros(src_tokens.shape, dtype=torch.long, device=device)
-                        token_attention = torch.ones(src_tokens.shape, dtype=torch.long, device=device)
-                        token_attention = torch.where(src_tokens==self.dictionary.pad(), token_ids, token_attention)
-                        token_embedding = PRETRAINED_MODEL(src_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0]
-                    ### 
-
-                    ### Plan 2
+                    token_embedding = PRETRAINED_MODEL(src_tokens, output_hidden_states=True)[2]
+                    if self.training:
+                        random_num = torch.rand(1)
+                        token_embedding = token_embedding[-(int(random_num * self.use_drop_embedding)+1)]
                     else:
-                        token_embedding = PRETRAINED_MODEL(src_tokens, features_only=True, return_all_hiddens=True)[1]["inner_states"]
-                        if self.use_drop_embedding == 1:
-                            token_embedding = token_embedding[-1].permute(1,0,2)
-                        else:
-                            if self.training and not self.mean_layer:
-                                random_num = torch.rand(1)
-                                token_embedding = token_embedding[-(int(random_num * self.use_drop_embedding)+1)].permute(1,0,2)
-                            else:
-                                token_embedding = torch.mean(torch.stack(token_embedding[-self.use_drop_embedding:]), dim=0).permute(1,0,2)
-
-                        
+                        token_embedding = torch.mean(torch.stack(token_embedding[-self.use_drop_embedding:]), dim=0)
 
                     token_embedding = token_embedding[:, 1:, :]
                     src_tokens = src_tokens[:, 1:]
@@ -829,35 +805,6 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             prev_output_tokens = prev_output_tokens[:, -1:]
             if positions is not None:
                 positions = positions[:, -1:]
-
-        # embed tokens and positions
-        # with torch.no_grad():
-        #     device = prev_output_tokens.device
-        #     Pretrained_model.to(device)
-        #     eos = 4*torch.ones(prev_output_tokens.shape[0], 1, dtype=torch.long, device=device)
-        #     prev_output_tokens = torch.cat((prev_output_tokens, eos), dim=1)
-        #     token_ids = torch.zeros(prev_output_tokens.shape, dtype=torch.long, device=device)
-        #     token_attention = torch.ones(prev_output_tokens.shape, dtype=torch.long, device=device)
-        #     token_attention = torch.where(prev_output_tokens==0, token_ids, token_attention)
-        #     token_ids = torch.ones(prev_output_tokens.shape, dtype=torch.long, device=device)
-        #     if incremental_state is not None:
-        #         token_embedding = Pretrained_model(prev_output_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0][:,-2:-1,:]
-        #     else:
-        #         # token_embedding = self.embed_tokens(src_tokens)  # original embedding
-        #         length = prev_output_tokens.shape[1]
-        #         token_embedding = torch.zeros(prev_output_tokens.shape[0], prev_output_tokens.shape[1] - 1, 768, device=device)
-        #         for i in range(1, length):        
-        #             token_embedding[:, i-1 ,:] = Pretrained_model(
-        #                 torch.cat((prev_output_tokens[:, :i], eos), dim=1),
-        #                 token_type_ids=torch.cat((token_ids[:, :i], token_ids[:, -1:]), dim=1),
-        #                 attention_mask=torch.cat((token_attention[:, :i], token_attention[:, -1:]), dim=1))[0][:, i-1, :]
-        #     # token_embedding = Pretrained_model(prev_output_tokens, token_type_ids=token_ids, attention_mask=token_attention)[0][:, :-1, :]
-        #     prev_output_tokens = prev_output_tokens[:,:-1]
-
-        # if incremental_state is not None:
-        #     prev_output_tokens = prev_output_tokens[:, -1:]
-        #     if positions is not None:
-        #         positions = positions[:, -1:]
 
         x = self.embed_scale *  self.embed_tokens(prev_output_tokens)
 
