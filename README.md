@@ -27,12 +27,11 @@ layer = -1 # Last layer
 output = model(input_ids, output_hidden_states=True)[2][layer]
 ```
 ## Preproduce the number in our paper
-Download and prepare IWSLT'14 dataset:
+Download and prepare IWSLT'14 dataset (If a warning `file config.json not found` shows up, please ignore it.):
 ```
 cd download_prepare
 bash download_and_prepare_data.sh
 ```
-
 Train the model:
 ```
 bash train.sh
