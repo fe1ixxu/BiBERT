@@ -74,6 +74,6 @@ Download our preprocessed WMT'14 dataset [wmt-data.zip](https://drive.google.com
 cd download_prepare
 unzip wmt-data.zip
 ```
-The dataset are preprocessed based on [Standford WMT'14 dataset](https://nlp.stanford.edu/projects/nmt/), which has the same preprocessing method as IWSLT'14.
+The resource of training data comes from [Standford WMT'14 dataset](https://nlp.stanford.edu/projects/nmt/). The data in `wmt-data` has been preprocessed the same way as IWSLT'14.
 
 Similar to IWSLT'14 training and evaluation discribed above, we train and evaluate the model by running `train-wmt.sh/train-wmt-dual.sh` and `generate-wmt.sh/generate-wmt-dual.sh`.
