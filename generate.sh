@@ -1,6 +1,6 @@
 DATAPATH=./download_prepare/data/
 STPATH=${DATAPATH}de-en-databin/
-MODELPATH=.models/one-way/ 
+MODELPATH=./models/one-way/ 
 PRE_SRC=Coran/bibert-ende
 PRE=./download_prepare/8k-vocab-models
 CUDA_VISIBLE_DEVICES=0 fairseq-generate \
