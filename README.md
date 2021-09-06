@@ -27,19 +27,36 @@ layer = -1 # Last layer
 output = model(input_ids, output_hidden_states=True)[2][layer]
 ```
 ## Preproduce the number in our paper
+### Preprocessing
 Download and prepare IWSLT'14 dataset (If a warning `file config.json not found` shows up, please ignore it.):
 ```
 cd download_prepare
 bash download_and_prepare_data.sh
 ```
-Train the model:
+
+After download and preprocessing, three preprocessed data bin will be shown in `download_prepare` folder:
+* `data`: de->en preprocessed data for ordinary one-way translation
+* `data_mixed`: dual-directional translation data
+* `data_mixed_ft`: fine-tuning on one-way translation data
+
+### Training
+Train a model for one-way translation (with stochastic layer selection):
 ```
 bash train.sh
 ```
 
-Translation:
+Train a model for dual-directional translation and further fine-tuning:
+```
+bash train-dual.sh
+```
+### Evaluation
+Translation for one-way model:
 ```
 bash generate.sh
+```
+Translation for dual-directional model:
+```
+bash generate-dual.sh
 ```
 
 The BLEU score will be printed out in the final output after running `generate.sh`.
