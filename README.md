@@ -71,6 +71,7 @@ The BLEU score will be printed out in the final output after running `generate.s
 ## WMT'14 Data Training 
 Download our preprocessed WMT'14 dataset [wmt-data.zip](https://drive.google.com/file/d/1VMvD69JxvYk8IYgZhXHXnJdWBjpuqpzm/view?usp=sharing)
 ```
+cd download_prepare
 unzip wmt-data.zip
 ```
 The dataset are preprocessed based on [Standford WMT'14 dataset](https://nlp.stanford.edu/projects/nmt/), which has the same preprocessing method as IWSLT'14.
