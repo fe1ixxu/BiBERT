@@ -1,5 +1,12 @@
 ## Prerequisites
+```
+conda create -n bibert python=3.7
+conda activate bibert
+```
 * [transformers](https://github.com/huggingface/transformers) >= 4.4.2
+```
+pip install transformers
+```
 * Install our fairseq repo
 ```
 cd fairseq
