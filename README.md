@@ -1,3 +1,10 @@
+## Prerequisites
+* [transformers](https://github.com/huggingface/transformers) >= 4.4.2
+* Install our fairseq repo
+```
+cd fairseq
+pip install --editable ./
+```
 ## BiBERT
 Download our pre-trained bilingual English-German BiBERT:
 ```
