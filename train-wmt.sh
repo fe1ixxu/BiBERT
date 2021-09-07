@@ -1,5 +1,5 @@
 TEXT=./download_prepare/wmt-data/
-SAVE_DIR=../models/one-way-wmt/
+SAVE_DIR=./models/one-way-wmt/
 
 CUDA_VISIBLE_DEVICES=0,1,2,3 fairseq-train ${TEXT}en-de-databin/ --arch transformer_vaswani_wmt_en_de_big --ddp-backend no_c10d --optimizer adam \
 --adam-betas '(0.9, 0.98)' --clip-norm 1.0 --lr 0.001 --lr-scheduler inverse_sqrt --warmup-updates 4000 --warmup-init-lr 1e-07 --dropout 0.3 \
