@@ -1,4 +1,4 @@
-This is the repository for our paper "BERT, mBERT, or BiBERT? A Study on Contextualized Embeddings for Neural Machine Translation" accepted in EMNLP 2021.
+This is the repository for our EMNLP 2021 paper "BERT, mBERT, or BiBERT? A Study on Contextualized Embeddings for Neural Machine Translation".
 
 ## Prerequisites
 ```
