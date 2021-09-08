@@ -1,7 +1,7 @@
 DATAPATH=./download_prepare/data/
 STPATH=${DATAPATH}de-en-databin/
 MODELPATH=./models/one-way/ 
-PRE_SRC=Coran/bibert-ende
+PRE_SRC=haoranxu/bibert-ende
 PRE=./download_prepare/8k-vocab-models
 CUDA_VISIBLE_DEVICES=0 fairseq-generate \
 ${STPATH} --path ${MODELPATH}checkpoint_best.pt --bpe bert --pretrained_bpe ${PRE} --pretrained_bpe_src ${PRE_SRC} \

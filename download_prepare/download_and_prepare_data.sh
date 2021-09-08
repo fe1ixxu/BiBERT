@@ -41,7 +41,7 @@ for prefix in "valid" "test" "train" ;
 do
     for lang in "en" "de" ;
     do
-        python transform_tokenize.py --input data_demose/${prefix}.${lang} --output bibert_tok/${prefix}.${lang} --pretrained_model Coran/bibert-ende
+        python transform_tokenize.py --input data_demose/${prefix}.${lang} --output bibert_tok/${prefix}.${lang} --pretrained_model haoranxu/bibert-ende
     done
 done
 
@@ -93,9 +93,9 @@ cd ..
 
 
 ## get src and tgt vocabulary
-python get_vocab.py --tokenizer Coran/bibert-ende --output data/src_vocab.txt
-python get_vocab.py --tokenizer Coran/bibert-ende --output data_mixed/src_vocab.txt
-python get_vocab.py --tokenizer Coran/bibert-ende --output data_mixed_ft/src_vocab.txt
+python get_vocab.py --tokenizer haoranxu/bibert-ende --output data/src_vocab.txt
+python get_vocab.py --tokenizer haoranxu/bibert-ende --output data_mixed/src_vocab.txt
+python get_vocab.py --tokenizer haoranxu/bibert-ende --output data_mixed_ft/src_vocab.txt
 python get_vocab.py --tokenizer 8k-vocab-models --output data/tgt_vocab.txt
 python get_vocab.py --tokenizer 12k-vocab-models --output data_mixed/tgt_vocab.txt
 python get_vocab.py --tokenizer 12k-vocab-models --output data_mixed_ft/tgt_vocab.txt
