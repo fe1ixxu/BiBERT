@@ -57,7 +57,7 @@ After download and preprocessing, three preprocessed data bin will be shown in `
 * `data_mixed_ft`: after dual-directional training, fine-tuning on one-way translation data
 
 ### Training
-Train a model for one-way translation. Note that passing field `--use_drop_embedding` to consider number of layers in stochastic layer selection, where the default is 8). Training with less GPUs should increase `--update-freq`, e.g., `update-freq=8` for 2 GPUs and `update-freq=4` for 4 GPUs.
+Train a model for one-way translation. Note that passing field `--use_drop_embedding` to consider number of layers in stochastic layer selection, where the default is 8. Training with less GPUs should increase `--update-freq`, e.g., `update-freq=8` for 2 GPUs and `update-freq=4` for 4 GPUs.
 ```
 bash train.sh
 ```
