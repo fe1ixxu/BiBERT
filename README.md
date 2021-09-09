@@ -23,8 +23,8 @@ conda activate bibert
 Download our pre-trained bilingual English-German BiBERT:
 ```
 from transformers import BertTokenizer, AutoModel
-tokenizer = BertTokenizer.from_pretrained("haoranxu/bibert-ende")
-model = AutoModel.from_pretrained("haoranxu/bibert-ende")
+tokenizer = BertTokenizer.from_pretrained("jhu-clsp/bibert-ende")
+model = AutoModel.from_pretrained("jhu-clsp/bibert-ende")
 ```
 An example of obtaining the contextual embeddings of the input sentence:
 ```
@@ -32,8 +32,8 @@ import torch
 text = "Hello world!"
 
 ## Load model and tokenizer
-tokenizer = BertTokenizer.from_pretrained("haoranxu/bibert-ende")
-model = AutoModel.from_pretrained("haoranxu/bibert-ende")
+tokenizer = BertTokenizer.from_pretrained("jhu-clsp/bibert-ende")
+model = AutoModel.from_pretrained("jhu-clsp/bibert-ende")
 
 ## Feed input sentence to the model
 tokens = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text))
