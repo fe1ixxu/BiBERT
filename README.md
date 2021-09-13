@@ -1,5 +1,14 @@
-This is the repository for our EMNLP 2021 paper "BERT, mBERT, or BiBERT? A Study on Contextualized Embeddings for Neural Machine Translation".
-
+This is the repository for our EMNLP 2021 paper "[BERT, mBERT, or BiBERT? A Study on Contextualized Embeddings for Neural Machine Translation](https://arxiv.org/abs/2109.04588)".
+```
+@misc{xu2021bert,
+      title={BERT, mBERT, or BiBERT? A Study on Contextualized Embeddings for Neural Machine Translation}, 
+      author={Haoran Xu and Benjamin Van Durme and Kenton Murray},
+      year={2021},
+      eprint={2109.04588},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
 ## Prerequisites
 ```
 conda create -n bibert python=3.7
