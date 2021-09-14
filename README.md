@@ -52,7 +52,7 @@ input_ids = torch.tensor(tokens, dtype=torch.long).unsqueeze(0)
 layer = -1 # Last layer
 output = model(input_ids, output_hidden_states=True)[2][layer]
 ```
-## Preproduction
+## Reproduction
 ### Preprocessing
 Download and prepare IWSLT'14 dataset (if you meet warnings like `file config.json not found`, please feel safe to ignore it):
 ```
