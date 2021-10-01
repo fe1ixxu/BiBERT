@@ -55,16 +55,23 @@ class BertBPE(object):
         self.pretrained_bpe_src = cfg.pretrained_bpe_src
 
         if not if_src:
-            self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe)
+            try:
+                self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
+            except:
+                self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe)
         else:
-            self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe_src)
+            try:
+                self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe_src)
+            except:
+                self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe_src)
 
 
     def encode(self, x: str) -> str:
         return " ".join(self.bert_tokenizer.tokenize(x))
 
     def decode(self, x: str, if_src=False) -> str:
-        return " ".join(get_sentence(x.split(" ")))
+        # return " ".join(get_sentence(x.split(" ")))
+        return self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
 
     def is_beginning_of_word(self, x: str) -> bool:
         return not x.startswith("##")

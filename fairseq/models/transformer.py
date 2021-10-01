@@ -334,7 +334,6 @@ class TransformerEncoder(FairseqEncoder):
 
         self.pretrained_model_name = args.pretrained_model
         self.use_drop_embedding = args.use_drop_embedding
-        assert 1 <= self.use_drop_embedding <= 12
 
         if not self.pretrained_model_name:
             self.embed_tokens = embed_tokens
