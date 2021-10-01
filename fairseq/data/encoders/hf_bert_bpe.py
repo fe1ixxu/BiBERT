@@ -58,20 +58,24 @@ class BertBPE(object):
             try:
                 self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe)
             except:
-                self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe)
+                self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe)      
         else:
             try:
                 self.bert_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe_src)
             except:
                 self.bert_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe_src)
-
+        try:
+            self.post_tokenizer = AutoTokenizer.from_pretrained(cfg.pretrained_bpe + "-wp")
+        except:
+            self.post_tokenizer = BertTokenizer.from_pretrained(cfg.pretrained_bpe + "-wp")
 
     def encode(self, x: str) -> str:
         return " ".join(self.bert_tokenizer.tokenize(x))
 
     def decode(self, x: str, if_src=False) -> str:
         # return " ".join(get_sentence(x.split(" ")))
-        return self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
+        out = self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
+        return " ".join(get_sentence(self.post_tokenizer.tokenize(out)))
 
     def is_beginning_of_word(self, x: str) -> bool:
         return not x.startswith("##")
