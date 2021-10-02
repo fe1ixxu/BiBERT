@@ -162,6 +162,8 @@ class BaseFairseqModel(nn.Module):
             kwargs["retain_dropout"] = cfg.generation.retain_dropout
             kwargs["retain_dropout_modules"] = cfg.generation.retain_dropout_modules
         self.make_generation_fast_(**kwargs)
+        if cfg.task.pretrain != None:
+            self.encoder.pretrained_model_name = cfg.task.pretrain
 
     def make_generation_fast_(self, **kwargs):
         """

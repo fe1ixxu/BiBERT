@@ -94,7 +94,6 @@ def _main(cfg: DictConfig, output_file):
     tgt_dict = task.target_dictionary
 
     overrides = ast.literal_eval(cfg.common_eval.model_overrides)
-
     # Load ensemble
     logger.info("loading model(s) from {}".format(cfg.common_eval.path))
     models, _model_args = checkpoint_utils.load_model_ensemble(

@@ -356,6 +356,8 @@ def add_generation_args(parser):
                        help="HF Byte BPE vocab.json")
     group.add_argument("--sentencepiece_model", metavar="N", default=None, type=str,
                        help="Sentence BPE model")
+    group.add_argument("--pretrain", metavar="N", default=None, type=str,
+                       help="replace pretrained models")
     add_common_eval_args(group)
     gen_parser_from_dataclass(group, GenerationConfig())
     return group

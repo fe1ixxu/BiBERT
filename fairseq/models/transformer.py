@@ -38,10 +38,16 @@ DEFAULT_MAX_SOURCE_POSITIONS = 1024
 DEFAULT_MAX_TARGET_POSITIONS = 1024
 
 PRETRAINED_MODEL = None
+NOT_FIND_MODEL=0
 def get_pretrained_model(model_name):
-    global PRETRAINED_MODEL
-    PRETRAINED_MODEL = AutoModel.from_pretrained(model_name)
-    PRETRAINED_MODEL.eval()
+    global PRETRAINED_MODEL, NOT_FIND_MODEL
+    try:
+        PRETRAINED_MODEL = AutoModel.from_pretrained(model_name)
+        PRETRAINED_MODEL.eval()
+        
+    except:
+        PRETRAINED_MODEL = None
+        NOT_FIND_MODEL = 1
 
 @register_model("transformer")
 class TransformerModel(FairseqEncoderDecoderModel):
@@ -452,6 +458,10 @@ class TransformerEncoder(FairseqEncoder):
                   hidden states of shape `(src_len, batch, embed_dim)`.
                   Only populated if *return_all_hiddens* is True.
         """
+        global NOT_FIND_MODEL
+        if NOT_FIND_MODEL:
+            get_pretrained_model(self.pretrained_model_name)
+            NOT_FIND_MODEL = 0 
         x, encoder_embedding = self.forward_embedding(src_tokens, token_embeddings)
 
         # B x T x C -> T x B x C
