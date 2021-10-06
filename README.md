@@ -27,6 +27,13 @@ conda activate bibert
   ```
   pip install hydra-core==1.0.3
   ```
+* ```
+  pip install sentencepiece
+  ```
+
+* ```
+  pip install protobuf
+  ```
 
 ## BiBERT
 Download our pre-trained bilingual English-German BiBERT:
