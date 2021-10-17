@@ -1,9 +1,10 @@
-DATA_PATH=/export/c01/haoranxu/BiBERT/data/en-fa/
+DATA_PATH=/export/c01/haoranxu/BiBERT/data/en-fa-remove-u200/
 LM=/export/c01/haoranxu/LMs/EnFa-large-128K-v1.0/
 ## de-subnmt data
 # No need to de-subnmt
 
 ## de-mose data
+echo demose data...
 mkdir ${DATA_PATH}data_demose
 perl ${HOME}/mosesdecoder/scripts/tokenizer/detokenizer.perl -l en -q < ${DATA_PATH}orig/train.en > ${DATA_PATH}data_demose/train.en
 perl ${HOME}/mosesdecoder/scripts/tokenizer/detokenizer.perl -l en -q < ${DATA_PATH}orig/train.fa > ${DATA_PATH}data_demose/train.fa
@@ -12,6 +13,7 @@ perl ${HOME}/mosesdecoder/scripts/tokenizer/detokenizer.perl -l en -q < ${DATA_P
 perl ${HOME}/mosesdecoder/scripts/tokenizer/detokenizer.perl -l en -q < ${DATA_PATH}orig/test.en > ${DATA_PATH}data_demose/test.en
 perl ${HOME}/mosesdecoder/scripts/tokenizer/detokenizer.perl -l en -q < ${DATA_PATH}orig/test.fa > ${DATA_PATH}data_demose/test.fa
 
+echo finish demosing
 ## train 52K tokenizer for dual-directional translation
 cat ${DATA_PATH}data_demose/train.en ${DATA_PATH}data_demose/dev.en ${DATA_PATH}data_demose/test.en \
 ${DATA_PATH}data_demose/train.fa ${DATA_PATH}data_demose/dev.fa ${DATA_PATH}data_demose/test.fa | shuf \
@@ -19,8 +21,11 @@ ${DATA_PATH}data_demose/train.fa ${DATA_PATH}data_demose/dev.fa ${DATA_PATH}data
 
 mkdir ${DATA_PATH}52k-vocab-models
 python vocab_trainer_bpe.py --data ${DATA_PATH}data_demose/train.all.dual --size 52000 --output ${DATA_PATH}52k-vocab-models
+cp /export/c01/haoranxu/BiBERT/data/en-fa/52k-vocab-models/config.json ${DATA_PATH}52k-vocab-models/
 
-
+mkdir ${DATA_PATH}52k-vocab-models-wp
+python vocab_trainer.py --data ${DATA_PATH}data_demose/train.all.dual --size 52000 --output ${DATA_PATH}52k-vocab-models-wp
+cp /export/c01/haoranxu/BiBERT/data/en-fa/52k-vocab-models-wp/config.json ${DATA_PATH}52k-vocab-models-wp/
 
 ## tokenize translation data
 mkdir ${DATA_PATH}bibert_tok
@@ -44,7 +49,7 @@ do
 done
 
 
-for one-way translation data
+#for one-way translation data
 cp ${DATA_PATH}bibert_tok/*.en ${DATA_PATH}
 cp ${DATA_PATH}52k_tok/*.fa ${DATA_PATH}
 
@@ -62,9 +67,9 @@ fairseq-preprocess --source-lang en --target-lang fa  --trainpref $TEXT/train --
 --tgtdict $TEXT/tgt_vocab.txt --vocab_file $TEXT/src_vocab.txt --workers 25
 
 ## remove useless files
-rm -rf data_demose
-rm -rf bibert_tok
-rm -rf 52k_tok
+rm -rf ${DATA_PATH}data_demose
+rm -rf ${DATA_PATH}bibert_tok
+rm -rf ${DATA_PATH}52k_tok
 
 
 

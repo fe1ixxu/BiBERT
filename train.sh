@@ -1,5 +1,5 @@
-TEXT=./data/en-fa/
-SAVE_DIR=./models/en-fa-52k-v1/
+TEXT=./data/en-fa-remove-u200/
+SAVE_DIR=./models/en-fa-52k-v1-remove-u200/
 LM=/export/c01/haoranxu/LMs/EnFa-large-128K-v1.0/
 
 CUDA_VISIBLE_DEVICES=0,1,2,3 fairseq-train ${TEXT}en-fa-databin/ --arch transformer_vaswani_wmt_en_de_big --ddp-backend no_c10d --optimizer adam \

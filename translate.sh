@@ -19,14 +19,14 @@ cp ${TEMP_DIR}/test.en ${TEMP_DIR}/dev.fa
 ## fairseq preprocess
 TEXT=$TEMP_DIR
 fairseq-preprocess --source-lang en --target-lang fa  --trainpref $TEXT/train --validpref $TEXT/dev \
---testpref $TEXT/test --destdir ${TEXT}/en-fa-databin --srcdict $FAIRSEQ/data/en-fa/src_vocab.txt \
---tgtdict $FAIRSEQ/data/en-fa/tgt_vocab.txt --vocab_file $FAIRSEQ/data/en-fa/src_vocab.txt --workers 25
+--testpref $TEXT/test --destdir ${TEXT}/en-fa-databin --srcdict $FAIRSEQ/data/en-fa-remove-u200/src_vocab.txt \
+--tgtdict $FAIRSEQ/data/en-fa-remove-u200/tgt_vocab.txt --vocab_file $FAIRSEQ/data/en-fa-remove-u200/src_vocab.txt --workers 25
 
 ## Translation
 STPATH=${TEMP_DIR}/en-fa-databin/
 MODELPATH=${MT_MODEL}
 PRE_SRC=${PRETRAIN_MODEL}
-PRE=${FAIRSEQ}/data/en-fa/52k-vocab-models
+PRE=${FAIRSEQ}/data/en-fa-remove-u200/52k-vocab-models
 CUDA_VISIBLE_DEVICES=0 fairseq-generate \
 ${STPATH} --path ${MODELPATH} --bpe bert --pretrained_bpe ${PRE} --pretrained_bpe_src ${PRE_SRC} \
 --beam 4 --lenpen 0.6 --remove-bpe --vocab_file=${STPATH}/dict.fa.txt --pretrain ${PRETRAIN_MODEL} \

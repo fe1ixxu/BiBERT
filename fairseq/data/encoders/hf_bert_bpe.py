@@ -75,7 +75,7 @@ class BertBPE(object):
     def decode(self, x: str, if_src=False) -> str:
         # return " ".join(get_sentence(x.split(" ")))
         out = self.bert_tokenizer.convert_tokens_to_string(x.split(" "))
-        return " ".join(get_sentence(self.post_tokenizer.tokenize(out)))
+        return out #" ".join(get_sentence(self.post_tokenizer.tokenize(out)))
 
     def is_beginning_of_word(self, x: str) -> bool:
         return not x.startswith("##")
