@@ -11,7 +11,8 @@ def main():
     try:
         tokenizer = AutoTokenizer.from_pretrained(args.pretrained_model)
     except:
-        tokenizer = BertTokenizer.from_pretrained(args.pretrained_model)
+        tokenizer = BertWordPieceTokenizer(vocab=args.pretrained_model+ "/vocab.txt", lowercase=False, clean_text=False, handle_chinese_chars=False)
+        tokenizer.tokenize = lambda x: tokenizer.encode(x, add_special_tokens=False).tokens
     fo = open(args.input, encoding="utf-8")
     fw = open(args.output, "w", encoding="utf-8")
     line = fo.readline()
